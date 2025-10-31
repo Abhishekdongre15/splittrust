@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../data/models/plan.dart';
+import '../../../domain/entities/plan_tier.dart';
 
 enum PlanStatus { initial, loading, ready, failure }
 
@@ -14,13 +15,13 @@ class PlanState extends Equatable {
 
   final PlanStatus status;
   final List<Plan> plans;
-  final PlanTier? selectedTier;
+  final PlanType? selectedTier;
   final String? errorMessage;
 
   PlanState copyWith({
     PlanStatus? status,
     List<Plan>? plans,
-    PlanTier? selectedTier,
+    PlanType? selectedTier,
     String? errorMessage,
   }) {
     return PlanState(

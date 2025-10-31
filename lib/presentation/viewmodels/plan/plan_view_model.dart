@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/models/plan.dart';
+import '../../../domain/entities/plan_tier.dart';
 import 'plan_state.dart';
 
 class PlanViewModel extends Cubit<PlanState> {
@@ -11,11 +12,11 @@ class PlanViewModel extends Cubit<PlanState> {
     try {
       const plans = <Plan>[
         Plan(
-          tier: PlanTier.silver,
-          displayName: 'Silver',
+          tier: PlanType.silver,
+          displayName: 'Silver Plan',
           tagline: 'Start splitting for free',
           billingType: BillingType.free,
-          priceText: 'Free forever',
+          priceText: '₹0 forever',
           highlighted: false,
           features: [
             'Equal split expenses',
@@ -24,11 +25,11 @@ class PlanViewModel extends Cubit<PlanState> {
           ],
         ),
         Plan(
-          tier: PlanTier.gold,
-          displayName: 'Gold',
+          tier: PlanType.gold,
+          displayName: 'Gold Subscription',
           tagline: 'Advanced tools for power users',
           billingType: BillingType.subscription,
-          priceText: '₹199/month subscription',
+          priceText: '₹199/month via Razorpay',
           highlighted: true,
           features: [
             'Smart split modes & receipts',
@@ -37,11 +38,11 @@ class PlanViewModel extends Cubit<PlanState> {
           ],
         ),
         Plan(
-          tier: PlanTier.diamond,
-          displayName: 'Diamond',
+          tier: PlanType.diamond,
+          displayName: 'Diamond Lifetime',
           tagline: 'Lifetime premium intelligence',
           billingType: BillingType.lifetime,
-          priceText: '₹4,999 one-time payment',
+          priceText: '₹4,999 one-time via Razorpay',
           highlighted: false,
           features: [
             'OCR & AI insights',
@@ -55,7 +56,7 @@ class PlanViewModel extends Cubit<PlanState> {
         state.copyWith(
           status: PlanStatus.ready,
           plans: plans,
-          selectedTier: PlanTier.gold,
+          selectedTier: PlanType.gold,
         ),
       );
     } catch (error) {
@@ -68,7 +69,7 @@ class PlanViewModel extends Cubit<PlanState> {
     }
   }
 
-  void selectPlan(PlanTier tier) {
+  void selectPlan(PlanType tier) {
     emit(state.copyWith(selectedTier: tier));
   }
 }

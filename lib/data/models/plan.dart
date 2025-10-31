@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum PlanTier { silver, gold, diamond }
+import '../../domain/entities/plan_tier.dart';
 
 enum BillingType { free, subscription, lifetime }
 
@@ -15,7 +15,7 @@ class Plan extends Equatable {
     required this.features,
   });
 
-  final PlanTier tier;
+  final PlanType tier;
   final String displayName;
   final String tagline;
   final BillingType billingType;
