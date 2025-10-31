@@ -508,7 +508,7 @@ class _GroupSelector extends StatelessWidget {
             decoration: const InputDecoration(
               filled: true,
               fillColor: AppColors.surface,
-              borderRadius: BorderRadius.all(Radius.circular(14)),
+          //    borderRadius: BorderRadius.all(Radius.circular(14)),
               border: InputBorder.none,
             ),
           ),
