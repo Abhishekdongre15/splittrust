@@ -1,34 +1,29 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
-
-class AppTheme {
-  static ThemeData get light {
-    final base = ThemeData.light(useMaterial3: true);
-    return base.copyWith(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary,
-        primary: AppColors.primary,
-        background: AppColors.background,
-        surface: AppColors.surface,
-      ),
-      scaffoldBackgroundColor: AppColors.background,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
+class SplitTrustTheme {
+  static ThemeData light() {
+    const seed = Color(0xFF51C29B);
+    final scheme = ColorScheme.fromSeed(seedColor: seed, brightness: Brightness.light);
+    return ThemeData(
+      colorScheme: scheme,
+      scaffoldBackgroundColor: const Color(0xFFF1F8F5),
+      useMaterial3: true,
+      appBarTheme: AppBarTheme(
+        backgroundColor: scheme.surface,
+        foregroundColor: scheme.onSurface,
         elevation: 0,
-        centerTitle: true,
       ),
-      textTheme: base.textTheme.apply(
-        bodyColor: AppColors.textPrimary,
-        displayColor: AppColors.textPrimary,
-      ),
-      cardTheme: CardThemeData(
-        color: AppColors.surface,
-        elevation: 3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
+      ),
+      cardTheme: CardTheme(
+        color: Colors.white,
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        margin: const EdgeInsets.all(0),
       ),
     );
   }
