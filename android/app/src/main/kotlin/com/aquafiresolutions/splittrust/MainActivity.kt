@@ -1,4 +1,4 @@
-package com.imaginetech.splittrust
+package com.aquafiresolutions.splittrust
 
 import io.flutter.embedding.android.FlutterActivity
 
