@@ -1,24 +1,36 @@
-allprojects {
+buildscript {
     repositories {
         google()
         mavenCentral()
     }
 }
 
-val newBuildDir: Directory =
-    rootProject.layout.buildDirectory
-        .dir("../../build")
-        .get()
-rootProject.layout.buildDirectory.value(newBuildDir)
-
-subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
-}
-subprojects {
-    project.evaluationDependsOn(":app")
+plugins {
+    id "com.android.application" version "8.4.2" apply false
+    id "com.android.library" version "8.4.2" apply false
+    id "org.jetbrains.kotlin.android" version "1.9.24" apply false
 }
 
-tasks.register<Delete>("clean") {
-    delete(rootProject.layout.buildDirectory)
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
+    }
+}
+
+// ---- optional: your shared build dir logic (converted to Groovy) ----
+gradle.afterProject { proj ->
+    if (proj == rootProject) {
+        def newBuildDir = rootProject.layout.buildDirectory.dir("../../build").get().asFile
+        rootProject.layout.buildDirectory.set(newBuildDir)
+    } else {
+        def rootBuildDir = rootProject.layout.buildDirectory.get().asFile
+        def subDir = new File(rootBuildDir, proj.name)
+        proj.layout.buildDirectory.set(subDir)
+    }
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.layout.buildDirectory
 }
