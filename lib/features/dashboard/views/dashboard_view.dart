@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:splittrust/features/plans/models/plan.dart';
 
 import '../../plans/cubit/plan_cubit.dart';
 import '../../plans/cubit/plan_state.dart';
