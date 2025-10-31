@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:splittrust/presentation/views/home/widgets/plan_card.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../viewmodels/plan/plan_state.dart';
 import '../../viewmodels/plan/plan_view_model.dart';
-import 'widgets/plan_card.dart';
 
 class PlanSelectionView extends StatelessWidget {
   const PlanSelectionView({super.key});

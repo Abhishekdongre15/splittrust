@@ -2,84 +2,76 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/theme/app_colors.dart';
-import '../../viewmodels/plan/plan_state.dart';
-import '../../viewmodels/plan/plan_view_model.dart';
-import 'widgets/plan_card.dart';
+import '../../viewmodels/dashboard/dashboard_view_model.dart';
+import '../../viewmodels/reports/reports_view_model.dart';
+import '../dashboard/dashboard_overview_view.dart';
+import '../dashboard/plan_selection_view.dart';
+import '../groups/group_list_view.dart';
+import '../reports/reports_view.dart';
+import '../settings/settings_view.dart';
 
-class HomeView extends StatelessWidget {
+class HomeView extends StatefulWidget {
   const HomeView({super.key});
 
   @override
+  State<HomeView> createState() => _HomeViewState();
+}
+
+class _HomeViewState extends State<HomeView> {
+  int _currentIndex = 0;
+
+  @override
   Widget build(BuildContext context) {
+    final pages = [
+      DashboardOverviewView(onUpgrade: _showPlans),
+      const GroupListView(),
+      const ReportsView(),
+      const SettingsView(),
+    ];
+
+    final titles = ['Dashboard', 'Groups', 'Reports', 'Settings'];
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('SplitTrust Plans'),
+        title: Text(titles[_currentIndex]),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: BlocBuilder<PlanViewModel, PlanState>(
-            builder: (context, state) {
-              if (state.status == PlanStatus.loading || state.status == PlanStatus.initial) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (state.status == PlanStatus.failure) {
-                return Center(
-                  child: Text(
-                    state.errorMessage ?? 'Something went wrong',
-                    style: Theme.of(context).textTheme.titleMedium,
-                    textAlign: TextAlign.center,
-                  ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: pages,
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) {
+          setState(() => _currentIndex = index);
+          if (index == 2) {
+            context.read<ReportsViewModel>().setGroups(
+                  context.read<DashboardViewModel>().state.groups.map((group) => group.id).toList(),
                 );
-              }
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Choose the plan that matches your group.',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Upgrade to unlock advanced settlements, exports, OCR, and more.',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
-                  const SizedBox(height: 24),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isWide = constraints.maxWidth > 700;
-                        return GridView.count(
-                          crossAxisCount: isWide ? 3 : 1,
-                          mainAxisSpacing: 16,
-                          crossAxisSpacing: 16,
-                          childAspectRatio: isWide ? 0.9 : 1.1,
-                          children: state.plans
-                              .map(
-                                (plan) => PlanCard(
-                                  plan: plan,
-                                  isSelected: state.selectedTier == plan.tier,
-                                  onSelected: () => context.read<PlanViewModel>().selectPlan(plan.tier),
-                                ),
-                              )
-                              .toList(),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
+          }
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+          NavigationDestination(icon: Icon(Icons.groups_outlined), selectedIcon: Icon(Icons.groups), label: 'Groups'),
+          NavigationDestination(icon: Icon(Icons.insert_drive_file_outlined), selectedIcon: Icon(Icons.insert_drive_file), label: 'Reports'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
+        ],
       ),
+      floatingActionButton: _currentIndex == 1
+          ? FloatingActionButton.extended(
+              onPressed: () {},
+              icon: const Icon(Icons.group_add),
+              label: const Text('Create group'),
+            )
+          : null,
+    );
+  }
+
+  void _showPlans() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const FractionallySizedBox(heightFactor: 0.9, child: PlanSelectionView()),
     );
   }
 }

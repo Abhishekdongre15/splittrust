@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../data/models/plan.dart';
+import '../../../../domain/entities/plan_tier.dart';
 
 class PlanCard extends StatelessWidget {
   const PlanCard({
@@ -110,13 +111,13 @@ class PlanCard extends StatelessWidget {
     );
   }
 
-  IconData _iconForPlan(PlanTier tier) {
+  IconData _iconForPlan(PlanType tier) {
     switch (tier) {
-      case PlanTier.silver:
+      case PlanType.silver:
         return Icons.rocket_launch;
-      case PlanTier.gold:
+      case PlanType.gold:
         return Icons.auto_graph;
-      case PlanTier.diamond:
+      case PlanType.diamond:
         return Icons.diamond;
     }
   }
