@@ -11,11 +11,6 @@ class DashboardCubit extends Cubit<DashboardState> {
     try {
       await Future<void>.delayed(const Duration(milliseconds: 300));
       const summary = DashboardSummary(currency: 'INR', youOwe: 18650.75, youAreOwed: 21210.40);
-      const groups = [
-        GroupSummary(id: 'trip_goa', name: 'Goa Getaway', baseCurrency: 'INR', netBalance: 2559.65),
-        GroupSummary(id: 'flat_mates', name: 'Flat 12B', baseCurrency: 'INR', netBalance: -1240.10),
-        GroupSummary(id: 'office_lunch', name: 'Office Lunches', baseCurrency: 'USD', netBalance: 480.00),
-      ];
       final now = DateTime.now();
       final activity = [
         ActivityItem(
@@ -40,7 +35,6 @@ class DashboardCubit extends Cubit<DashboardState> {
       emit(state.copyWith(
         status: DashboardStatus.ready,
         summary: summary,
-        groups: groups,
         activity: activity,
       ));
     } catch (error) {

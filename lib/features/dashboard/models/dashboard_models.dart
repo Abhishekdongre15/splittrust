@@ -34,19 +34,3 @@ class ActivityItem extends Equatable {
   List<Object?> get props => [id, title, subtitle, timestamp];
 }
 
-class GroupSummary extends Equatable {
-  const GroupSummary({
-    required this.id,
-    required this.name,
-    required this.baseCurrency,
-    required this.netBalance,
-  });
-
-  final String id;
-  final String name;
-  final String baseCurrency;
-  final double netBalance;
-
-  @override
-  List<Object?> get props => [id, name, baseCurrency, netBalance];
-}
