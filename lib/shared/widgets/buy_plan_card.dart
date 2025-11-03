@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../features/plans/models/plan.dart';
+import '../../features/buy_plan/models/buy_plan.dart';
 
-class PlanCard extends StatelessWidget {
-  const PlanCard({super.key, required this.plan, required this.onSelect});
+class BuyPlanCard extends StatelessWidget {
+  const BuyPlanCard({super.key, required this.plan, required this.onSelect});
 
-  final Plan plan;
+  final BuyPlan plan;
   final VoidCallback onSelect;
 
   @override

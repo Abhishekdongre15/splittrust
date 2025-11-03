@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../plans/cubit/plan_cubit.dart';
-import '../../plans/cubit/plan_state.dart';
-import '../../plans/views/buy_plan_sheet.dart';
+import '../../buy_plan/cubit/buy_plan_cubit.dart';
+import '../../buy_plan/cubit/buy_plan_state.dart';
+import '../../buy_plan/views/buy_plan_sheet.dart';
 import '../cubit/dashboard_cubit.dart';
 import '../cubit/dashboard_state.dart';
 import '../models/dashboard_models.dart';
@@ -37,7 +37,7 @@ class DashboardView extends StatelessWidget {
                   const SizedBox(height: 24),
                   _ActivitySection(activity: state.activity),
                   const SizedBox(height: 24),
-                  _PlanSection(onTap: () => _showPlans(context)),
+                  _BuyPlanSection(onTap: () => _showPlans(context)),
                 ],
               ),
             );
@@ -52,7 +52,7 @@ class DashboardView extends StatelessWidget {
       isScrollControlled: true,
       builder: (context) => const BuyPlanSheet(),
     );
-    context.read<PlanCubit>().load();
+    context.read<BuyPlanCubit>().load();
   }
 }
 
@@ -221,8 +221,8 @@ class _ActivitySection extends StatelessWidget {
   }
 }
 
-class _PlanSection extends StatelessWidget {
-  const _PlanSection({required this.onTap});
+class _BuyPlanSection extends StatelessWidget {
+  const _BuyPlanSection({required this.onTap});
 
   final VoidCallback onTap;
 
@@ -231,18 +231,18 @@ class _PlanSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Upgrade plans', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+        Text('Buy plans', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        BlocBuilder<PlanCubit, PlanState>(
+        BlocBuilder<BuyPlanCubit, BuyPlanState>(
           builder: (context, state) {
             final plans = state.plans;
-            if (state.status == PlanStatus.loading && plans.isEmpty) {
+            if (state.status == BuyPlanStatus.loading && plans.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
             if (plans.isEmpty) {
               return Card(
                 child: ListTile(
-                  title: const Text('Explore premium plans'),
+                  title: const Text('Explore BuyPlan options'),
                   subtitle: const Text('See how Gold and Diamond unlock advanced features.'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: onTap,
@@ -290,4 +290,3 @@ String timeAgo(DateTime timestamp) {
   }
   return '${difference.inDays}d ago';
 }
-

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../shared/widgets/plan_card.dart';
-import '../cubit/plan_cubit.dart';
-import '../cubit/plan_state.dart';
-import '../models/plan.dart';
+import '../../../shared/widgets/buy_plan_card.dart';
+import '../cubit/buy_plan_cubit.dart';
+import '../cubit/buy_plan_state.dart';
+import '../models/buy_plan.dart';
 
 class BuyPlanSheet extends StatelessWidget {
   const BuyPlanSheet({super.key});
@@ -15,7 +15,7 @@ class BuyPlanSheet extends StatelessWidget {
       expand: false,
       initialChildSize: 0.9,
       builder: (context, controller) {
-        return BlocBuilder<PlanCubit, PlanState>(
+        return BlocBuilder<BuyPlanCubit, BuyPlanState>(
           builder: (context, state) {
             final plans = state.plans;
             return Container(
@@ -39,7 +39,7 @@ class BuyPlanSheet extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text('Choose the plan that fits you',
+                    Text('Choose the BuyPlan that fits you',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Text(
@@ -47,7 +47,7 @@ class BuyPlanSheet extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 24),
-                    if (state.status == PlanStatus.loading && plans.isEmpty)
+                    if (state.status == BuyPlanStatus.loading && plans.isEmpty)
                       const Center(child: CircularProgressIndicator())
                     else
                       Expanded(
@@ -59,7 +59,7 @@ class BuyPlanSheet extends StatelessWidget {
                             final plan = plans[index];
                             return SizedBox(
                               height: 280,
-                              child: PlanCard(
+                              child: BuyPlanCard(
                                 plan: plan,
                                 onSelect: () => _onPlanSelected(context, plan),
                               ),
@@ -77,7 +77,7 @@ class BuyPlanSheet extends StatelessWidget {
     );
   }
 
-  void _onPlanSelected(BuildContext context, Plan plan) {
+  void _onPlanSelected(BuildContext context, BuyPlan plan) {
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Selected ${plan.tier.displayName}. Razorpay flow goes here.')),
