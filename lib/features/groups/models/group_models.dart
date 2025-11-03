@@ -70,10 +70,21 @@ class MemberProfile extends Equatable {
 }
 
 class GroupMember extends Equatable {
-  const GroupMember({required this.id, required this.displayName, this.role = GroupRole.member});
+  const GroupMember({
+    required this.id,
+    required this.displayName,
+    this.role = GroupRole.member,
+  });
 
-  factory GroupMember.fromProfile(MemberProfile profile, {GroupRole role = GroupRole.member}) {
-    return GroupMember(id: profile.id, displayName: profile.displayName, role: role);
+  factory GroupMember.fromProfile(
+    MemberProfile profile, {
+    GroupRole role = GroupRole.member,
+  }) {
+    return GroupMember(
+      id: profile.id,
+      displayName: profile.displayName,
+      role: role,
+    );
   }
 
   final String id;
@@ -131,18 +142,18 @@ class GroupExpense extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        amount,
-        currency,
-        amountBase,
-        paidBy,
-        participantIds,
-        shares,
-        category,
-        createdAt,
-        notes,
-      ];
+    id,
+    title,
+    amount,
+    currency,
+    amountBase,
+    paidBy,
+    participantIds,
+    shares,
+    category,
+    createdAt,
+    notes,
+  ];
 }
 
 class GroupSettlement extends Equatable {
@@ -165,7 +176,15 @@ class GroupSettlement extends Equatable {
   final String? reference;
 
   @override
-  List<Object?> get props => [id, fromMemberId, toMemberId, amount, method, recordedAt, reference];
+  List<Object?> get props => [
+    id,
+    fromMemberId,
+    toMemberId,
+    amount,
+    method,
+    recordedAt,
+    reference,
+  ];
 }
 
 class GroupHistoryEntry extends Equatable {
@@ -220,7 +239,13 @@ class MemberBalance extends Equatable {
   }
 
   @override
-  List<Object?> get props => [memberId, paid, owed, settlementsIn, settlementsOut];
+  List<Object?> get props => [
+    memberId,
+    paid,
+    owed,
+    settlementsIn,
+    settlementsOut,
+  ];
 }
 
 double roundBankers(double value, [int fractionDigits = 2]) {
@@ -239,7 +264,7 @@ double roundBankers(double value, [int fractionDigits = 2]) {
 }
 
 class GroupDetail extends Equatable {
-  const GroupDetail({
+  GroupDetail({
     required this.id,
     required this.name,
     required this.baseCurrency,
@@ -250,10 +275,10 @@ class GroupDetail extends Equatable {
     this.simplifyDebts = true,
     this.defaultSplitStrategy = GroupDefaultSplitStrategy.paidByYouEqual,
     this.note,
-  })  : members = List.unmodifiable(members),
-        expenses = List.unmodifiable(expenses),
-        settlements = List.unmodifiable(settlements),
-        history = List.unmodifiable(history);
+  }) : members = List.unmodifiable(members),
+       expenses = List.unmodifiable(expenses),
+       settlements = List.unmodifiable(settlements),
+       history = List.unmodifiable(history);
 
   final String id;
   final String name;
@@ -334,13 +359,17 @@ class GroupDetail extends Equatable {
       final fromBalance = result[settlement.fromMemberId];
       if (fromBalance != null) {
         result[settlement.fromMemberId] = fromBalance.copyWith(
-          settlementsOut: roundBankers(fromBalance.settlementsOut + settlement.amount),
+          settlementsOut: roundBankers(
+            fromBalance.settlementsOut + settlement.amount,
+          ),
         );
       }
       final toBalance = result[settlement.toMemberId];
       if (toBalance != null) {
         result[settlement.toMemberId] = toBalance.copyWith(
-          settlementsIn: roundBankers(toBalance.settlementsIn + settlement.amount),
+          settlementsIn: roundBankers(
+            toBalance.settlementsIn + settlement.amount,
+          ),
         );
       }
     }
@@ -354,21 +383,23 @@ class GroupDetail extends Equatable {
     return copy;
   }
 
-  double get totalExpenses => expenses.fold<double>(0, (value, e) => value + e.amountBase);
+  double get totalExpenses =>
+      expenses.fold<double>(0, (value, e) => value + e.amountBase);
 
-  double get totalSettlements => settlements.fold<double>(0, (value, s) => value + s.amount);
+  double get totalSettlements =>
+      settlements.fold<double>(0, (value, s) => value + s.amount);
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        baseCurrency,
-        members,
-        expenses,
-        settlements,
-        history,
-        simplifyDebts,
-        defaultSplitStrategy,
-        note,
-      ];
+    id,
+    name,
+    baseCurrency,
+    members,
+    expenses,
+    settlements,
+    history,
+    simplifyDebts,
+    defaultSplitStrategy,
+    note,
+  ];
 }
