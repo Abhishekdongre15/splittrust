@@ -3,19 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'theme/app_theme.dart';
+import '../features/auth/cubit/auth_cubit.dart';
+import '../features/auth/cubit/auth_state.dart';
+import '../features/auth/data/auth_repository.dart';
+import '../features/auth/views/login_view.dart';
+import '../features/auth/views/splash_view.dart';
 import '../features/buy_plan/cubit/buy_plan_cubit.dart';
 import '../features/buy_plan/views/buy_plan_sheet.dart';
+import '../features/contacts/cubit/contacts_cubit.dart';
 import '../features/dashboard/cubit/dashboard_cubit.dart';
 import '../features/dashboard/views/dashboard_view.dart';
 import '../features/groups/cubit/group_cubit.dart';
 import '../features/groups/data/group_repository.dart';
 import '../features/groups/views/group_list_view.dart';
 import '../features/onboarding/cubit/onboarding_cubit.dart';
-import '../features/onboarding/cubit/onboarding_state.dart';
 import '../features/onboarding/views/onboarding_flow_view.dart';
 import '../features/reports/views/reports_view.dart';
 import '../features/settings/views/settings_view.dart';
 import '../features/web/views/web_landing_view.dart';
+import '../features/contacts/data/contact_repository.dart';
 
 class SplitTrustApp extends StatelessWidget {
   const SplitTrustApp({super.key});
@@ -33,10 +39,12 @@ class SplitTrustApp extends StatelessWidget {
 
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => OnboardingCubit()..start()),
+        BlocProvider(create: (_) => AuthCubit(repository: AuthRepository())..initialize()),
+        BlocProvider(create: (_) => OnboardingCubit()),
         BlocProvider(create: (_) => DashboardCubit()..load()),
         BlocProvider(create: (_) => BuyPlanCubit()..load()),
         BlocProvider(create: (_) => GroupCubit(repository: MockGroupRepository())..load()),
+        BlocProvider(create: (_) => ContactsCubit(repository: ContactRepository())),
       ],
       child: MaterialApp(
         title: 'SplitTrust',
@@ -53,12 +61,42 @@ class _RootMobileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<OnboardingCubit, OnboardingState>(
-      builder: (context, state) {
-        if (!state.isComplete) {
-          return const OnboardingFlowView();
+    return BlocConsumer<AuthCubit, AuthState>(
+      listenWhen: (previous, current) => previous.status != current.status,
+      listener: (context, state) {
+        if (state.status == AuthStatus.authenticated) {
+          if (state.isNewUser) {
+            context.read<OnboardingCubit>().startProfileCapture();
+          } else {
+            context.read<OnboardingCubit>().finish();
+          }
+          context.read<ContactsCubit>().load();
         }
-        return const _HomeView();
+        if (state.status == AuthStatus.unauthenticated) {
+          context.read<OnboardingCubit>().start();
+        }
+      },
+      builder: (context, state) {
+        if (state.isSplash) {
+          return const SplashView();
+        }
+
+        switch (state.status) {
+          case AuthStatus.splash:
+          case AuthStatus.unauthenticated:
+          case AuthStatus.sendingOtp:
+          case AuthStatus.otpSent:
+          case AuthStatus.authenticating:
+          case AuthStatus.verifyingOtp:
+          case AuthStatus.failure:
+            return const LoginView();
+          case AuthStatus.authenticated:
+            final onboarding = context.watch<OnboardingCubit>().state;
+            if (!onboarding.isComplete) {
+              return const OnboardingFlowView();
+            }
+            return const _HomeView();
+        }
       },
     );
   }

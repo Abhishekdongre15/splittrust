@@ -5,7 +5,10 @@ import 'onboarding_state.dart';
 class OnboardingCubit extends Cubit<OnboardingState> {
   OnboardingCubit() : super(const OnboardingState());
 
-  void start() => emit(state.copyWith(step: OnboardingStep.welcome));
+  void start() => emit(state.copyWith(step: OnboardingStep.welcome, isComplete: false));
+
+  void startProfileCapture() =>
+      emit(state.copyWith(step: OnboardingStep.profile, isComplete: false));
 
   void allowNotifications(bool allowed) =>
       emit(state.copyWith(notificationsAllowed: allowed));

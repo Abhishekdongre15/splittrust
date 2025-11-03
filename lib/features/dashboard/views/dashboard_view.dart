@@ -1,10 +1,13 @@
+import 'package:characters/characters.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:splittrust/features/buy_plan/models/buy_plan.dart';
 
 import '../../buy_plan/cubit/buy_plan_cubit.dart';
 import '../../buy_plan/cubit/buy_plan_state.dart';
 import '../../buy_plan/views/buy_plan_sheet.dart';
+import '../../contacts/cubit/contacts_cubit.dart';
+import '../../contacts/cubit/contacts_state.dart';
+import '../../contacts/models/contact.dart';
 import '../../groups/cubit/group_cubit.dart';
 import '../../groups/cubit/group_state.dart';
 import '../../groups/models/group_models.dart';
@@ -17,22 +20,29 @@ class DashboardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<DashboardCubit, DashboardState>(
-      builder: (context, state) {
+    return BlocListener<ContactsCubit, ContactsState>(
+      listenWhen: (previous, current) =>
+          previous.lastInvited != current.lastInvited && current.lastInvited != null,
+      listener: (context, state) {
+        final invited = state.lastInvited;
+        if (invited != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sent SplitTrust download link to ${invited.name}')),
+          );
+        }
+      },
+      child: BlocBuilder<DashboardCubit, DashboardState>(
+        builder: (context, state) {
         switch (state.status) {
           case DashboardStatus.idle:
           case DashboardStatus.loading:
             return const Center(child: CircularProgressIndicator());
           case DashboardStatus.error:
-            return Center(
-              child: Text(state.errorMessage ?? 'Something went wrong'),
-            );
+            return Center(child: Text(state.errorMessage ?? 'Something went wrong'));
           case DashboardStatus.ready:
             final summary = state.summary;
             if (summary == null) {
-              return const Center(
-                child: Text('No data yet. Add your first expense!'),
-              );
+              return const Center(child: Text('No data yet. Add your first expense!'));
             }
 
             final quickActions = [
@@ -40,26 +50,19 @@ class DashboardView extends StatelessWidget {
                 icon: Icons.receipt_long_rounded,
                 label: 'Add expense',
                 color: Theme.of(context).colorScheme.primary,
-                onTap: () =>
-                    _showComingSoon(context, 'Expense flow opens here'),
+                onTap: () => _showComingSoon(context, 'Expense flow opens here'),
               ),
               _QuickAction(
                 icon: Icons.groups_3_outlined,
                 label: 'Create group',
                 color: Theme.of(context).colorScheme.tertiary,
-                onTap: () => _showComingSoon(
-                  context,
-                  'Use Groups tab to invite friends',
-                ),
+                onTap: () => _showComingSoon(context, 'Use Groups tab to invite friends'),
               ),
               _QuickAction(
                 icon: Icons.currency_rupee,
                 label: 'Settle up',
                 color: Theme.of(context).colorScheme.secondary,
-                onTap: () => _showComingSoon(
-                  context,
-                  'Settlement sheet launches from a group',
-                ),
+                onTap: () => _showComingSoon(context, 'Settlement sheet launches from a group'),
               ),
               _QuickAction(
                 icon: Icons.workspace_premium_outlined,
@@ -72,9 +75,7 @@ class DashboardView extends StatelessWidget {
             return RefreshIndicator(
               onRefresh: context.read<DashboardCubit>().load,
               child: CustomScrollView(
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                 slivers: [
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
@@ -90,7 +91,15 @@ class DashboardView extends StatelessWidget {
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-                    sliver: SliverToBoxAdapter(child: _GroupSection()),
+                    sliver: SliverToBoxAdapter(
+                      child: _GroupSection(),
+                    ),
+                  ),
+                  const SliverPadding(
+                    padding: EdgeInsets.fromLTRB(24, 16, 24, 8),
+                    sliver: SliverToBoxAdapter(
+                      child: _ContactsInviteSection(),
+                    ),
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
@@ -108,14 +117,13 @@ class DashboardView extends StatelessWidget {
               ),
             );
         }
-      },
+        },
+      ),
     );
   }
 
   static void _showComingSoon(BuildContext context, String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _showPlans(BuildContext context) {
@@ -182,17 +190,18 @@ class _DashboardHeader extends StatelessWidget {
         children: [
           Text(
             'Welcome back',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Colors.white.withOpacity(0.9),
-            ),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(color: Colors.white.withOpacity(0.9)),
           ),
           const SizedBox(height: 8),
           Text(
             'Your shared expenses at a glance',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(context)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 24),
           Wrap(
@@ -258,10 +267,10 @@ class _SummaryPill extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: textColor.withOpacity(0.9),
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(color: textColor.withOpacity(0.9), fontWeight: FontWeight.w600),
               ),
               Icon(icon, color: textColor.withOpacity(0.9)),
             ],
@@ -269,10 +278,10 @@ class _SummaryPill extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             '$currency ${amount.toStringAsFixed(2)}',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(context)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(color: textColor, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -290,18 +299,15 @@ class _QuickActionGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Quick actions',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
+        Text('Quick actions', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 16),
         Wrap(
           spacing: 12,
           runSpacing: 12,
           children: actions
-              .map((action) => _QuickActionChip(action: action))
+              .map(
+                (action) => _QuickActionChip(action: action),
+              )
               .toList(),
         ),
       ],
@@ -331,10 +337,10 @@ class _QuickActionChip extends StatelessWidget {
               const SizedBox(width: 12),
               Text(
                 action.label,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: action.color,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(color: action.color, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -357,9 +363,7 @@ class _GroupSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
             ),
             child: const Center(child: CircularProgressIndicator()),
           );
@@ -371,16 +375,11 @@ class _GroupSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.error.withOpacity(0.3),
-              ),
+              border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.error_outline,
-                  color: Theme.of(context).colorScheme.error,
-                ),
+                Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -414,19 +413,14 @@ class _GroupCarousel extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         padding: const EdgeInsets.all(24),
         child: Row(
           children: [
             CircleAvatar(
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: Icon(
-                Icons.group_add,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-              ),
+              child: Icon(Icons.group_add, color: Theme.of(context).colorScheme.onPrimaryContainer),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -448,14 +442,9 @@ class _GroupCarousel extends StatelessWidget {
           children: [
             Text(
               'Your groups',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
-            Text(
-              '${groups.length} total',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
+            Text('${groups.length} total', style: Theme.of(context).textTheme.labelLarge),
           ],
         ),
         const SizedBox(height: 16),
@@ -470,9 +459,7 @@ class _GroupCarousel extends StatelessWidget {
               final balances = group.balances;
               final net = balances[currentUserId]?.net ?? 0;
               final positive = net >= 0;
-              final balanceColor = positive
-                  ? Colors.green.shade600
-                  : Colors.red.shade600;
+              final balanceColor = positive ? Colors.green.shade600 : Colors.red.shade600;
               return Container(
                 width: 220,
                 decoration: BoxDecoration(
@@ -493,15 +480,9 @@ class _GroupCarousel extends StatelessWidget {
                     Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary.withOpacity(0.15),
-                          foregroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
-                          child: Text(
-                            group.name.characters.first.toUpperCase(),
-                          ),
+                          backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                          foregroundColor: Theme.of(context).colorScheme.primary,
+                          child: Text(group.name.characters.first.toUpperCase()),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -509,8 +490,7 @@ class _GroupCarousel extends StatelessWidget {
                             group.name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
                       ],
@@ -526,18 +506,14 @@ class _GroupCarousel extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
-                              'Balance',
-                              style: Theme.of(context).textTheme.labelLarge,
-                            ),
+                            Text('Balance', style: Theme.of(context).textTheme.labelLarge),
                             const SizedBox(height: 4),
                             Text(
                               '${group.baseCurrency} ${net.toStringAsFixed(2)}',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    color: balanceColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(color: balanceColor, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -564,35 +540,23 @@ class _ActivityTimeline extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Recent activity',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
+        Text('Recent activity', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 16),
         if (activity.isEmpty)
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
             ),
             padding: const EdgeInsets.all(24),
             child: Row(
               children: [
-                Icon(
-                  Icons.celebration_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                Icon(Icons.celebration_outlined, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    'All settled! Add a new expense to keep things moving.',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
+                  child: Text('All settled! Add a new expense to keep things moving.',
+                      style: Theme.of(context).textTheme.bodyLarge),
                 ),
               ],
             ),
@@ -618,9 +582,7 @@ class _ActivityTimeline extends StatelessWidget {
                         Container(
                           width: 2,
                           height: 36,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                         ),
                     ],
                   ),
@@ -647,21 +609,17 @@ class _ActivityTimeline extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   item.title,
-                                  style: Theme.of(context).textTheme.titleSmall
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall
                                       ?.copyWith(fontWeight: FontWeight.w700),
                                 ),
                               ),
-                              Text(
-                                timeAgo(item.timestamp),
-                                style: Theme.of(context).textTheme.labelMedium,
-                              ),
+                              Text(timeAgo(item.timestamp), style: Theme.of(context).textTheme.labelMedium),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            item.subtitle,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
+                          Text(item.subtitle, style: Theme.of(context).textTheme.bodyMedium),
                         ],
                       ),
                     ),
@@ -671,6 +629,207 @@ class _ActivityTimeline extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _ContactsInviteSection extends StatelessWidget {
+  const _ContactsInviteSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ContactsCubit, ContactsState>(
+      builder: (context, state) {
+        switch (state.status) {
+          case ContactsStatus.idle:
+            return const SizedBox.shrink();
+          case ContactsStatus.loading:
+            return Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Center(child: CircularProgressIndicator()),
+            );
+          case ContactsStatus.failure:
+            return Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Text(
+                state.errorMessage ?? 'Unable to load contacts right now',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Theme.of(context).colorScheme.onErrorContainer),
+              ),
+            );
+          case ContactsStatus.ready:
+            final onApp = state.contacts.where((c) => c.isUser).toList();
+            final needsInvite = state.contacts.where((c) => !c.isUser).toList();
+            if (onApp.isEmpty && needsInvite.isEmpty) {
+              return const SizedBox.shrink();
+            }
+
+            return Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Bring your friends',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Sync existing groups instantly or invite friends who have not joined SplitTrust yet.',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                  if (onApp.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      'Already on SplitTrust',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        for (final contact in onApp)
+                          _FriendChip(contact: contact),
+                      ],
+                    ),
+                  ],
+                  if (needsInvite.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      'Invite from your contacts',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 150,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemBuilder: (context, index) {
+                          final contact = needsInvite[index];
+                          return _InviteCard(contact: contact);
+                        },
+                        separatorBuilder: (_, __) => const SizedBox(width: 16),
+                        itemCount: needsInvite.length,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+        }
+      },
+    );
+  }
+}
+
+class _FriendChip extends StatelessWidget {
+  const _FriendChip({required this.contact});
+
+  final Contact contact;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = contact.name.characters.take(2).toString().toUpperCase();
+    final colorScheme = Theme.of(context).colorScheme;
+    final planLabel = contact.plan.isEmpty ? 'SplitTrust friend' : '${contact.plan} plan';
+    return Chip(
+      avatar: CircleAvatar(
+        backgroundColor: colorScheme.primary,
+        child: Text(
+          initials,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
+      label: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(contact.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(planLabel, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12)),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      backgroundColor: colorScheme.surface,
+    );
+  }
+}
+
+class _InviteCard extends StatelessWidget {
+  const _InviteCard({required this.contact});
+
+  final Contact contact;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            backgroundColor: theme.colorScheme.primaryContainer,
+            child: Text(
+              contact.name.characters.first.toUpperCase(),
+              style: TextStyle(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(contact.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text(contact.phone, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const Spacer(),
+          FilledButton.icon(
+            onPressed: contact.invited
+                ? null
+                : () => context.read<ContactsCubit>().invite(contact),
+            icon: Icon(contact.invited ? Icons.check_rounded : Icons.sms_rounded),
+            label: Text(contact.invited ? 'Invited' : 'Invite'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -685,12 +844,8 @@ class _BuyPlanShowcase extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Upgrade to unlock more',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
+        Text('Upgrade to unlock more',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 12),
         BlocBuilder<BuyPlanCubit, BuyPlanState>(
           builder: (context, state) {
@@ -701,8 +856,7 @@ class _BuyPlanShowcase extends StatelessWidget {
             if (plans.isEmpty) {
               return _BuyPlanHero(
                 title: 'Explore SplitTrust plans',
-                subtitle:
-                    'See how Gold and Diamond add OCR, exports, and smart settlements.',
+                subtitle: 'See how Gold and Diamond add OCR, exports, and smart settlements.',
                 onTap: onTap,
               );
             }
@@ -753,11 +907,7 @@ class _BuyPlanHero extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: gradientColors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: LinearGradient(colors: gradientColors, begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           if (highlight)
@@ -780,39 +930,35 @@ class _BuyPlanHero extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: textColor,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(color: textColor, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       subtitle,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: textColor.withOpacity(0.9),
-                      ),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: textColor.withOpacity(0.9)),
                     ),
                   ],
                 ),
               ),
               if (price != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: highlight
-                        ? Colors.white.withOpacity(0.2)
-                        : Colors.white,
+                    color: highlight ? Colors.white.withOpacity(0.2) : Colors.white,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     price!,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: textColor,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelLarge
+                        ?.copyWith(color: textColor, fontWeight: FontWeight.w700),
                   ),
                 ),
             ],
@@ -821,9 +967,7 @@ class _BuyPlanHero extends StatelessWidget {
           FilledButton.icon(
             onPressed: onTap,
             style: FilledButton.styleFrom(
-              backgroundColor: highlight
-                  ? Colors.white
-                  : Theme.of(context).colorScheme.primary,
+              backgroundColor: highlight ? Colors.white : Theme.of(context).colorScheme.primary,
               foregroundColor: highlight
                   ? gradientColors.last
                   : Theme.of(context).colorScheme.onPrimary,
