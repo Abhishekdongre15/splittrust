@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "592959853320",
+    "project_id": "splittrust-3bccc",
+    "storage_bucket": "splittrust-3bccc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:592959853320:android:9ecf6ee4676c3d460952bd",
+        "android_client_info": {
+          "package_name": "com.aquafiresolutions.splittrust"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIjSouteY__mRfJx93LjU0Q9FdUtBu27o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

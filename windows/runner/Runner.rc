@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.imaginetech" "\0"
+            VALUE "CompanyName", "AquaFire Solutions" "\0"
             VALUE "FileDescription", "splittrust" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "splittrust" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.imaginetech. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 AquaFire Solutions. All rights reserved." "\0"
             VALUE "OriginalFilename", "splittrust.exe" "\0"
             VALUE "ProductName", "splittrust" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

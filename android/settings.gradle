@@ -1,0 +1,18 @@
+import java.util.Properties
+
+// Load local.properties to resolve Flutter SDK path
+Properties properties = new Properties()
+File localProperties = new File(rootDir, "local.properties")
+if (localProperties.exists()) {
+    localProperties.withInputStream { properties.load(it) }
+}
+
+String flutterSdkPath = properties.getProperty("flutter.sdk")
+if (flutterSdkPath == null) {
+    throw new GradleException("flutter.sdk not set in local.properties")
+}
+
+// Apply the legacy Flutter app plugin loader to avoid pluginManagement resolution issues
+apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"
+
+include ":app"
