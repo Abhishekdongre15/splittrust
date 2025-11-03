@@ -1,3 +1,4 @@
+import 'package:characters/characters.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -34,34 +35,75 @@ class GroupDetailPage extends StatelessWidget {
           return DefaultTabController(
             length: 4,
             child: Scaffold(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               appBar: AppBar(
+                elevation: 0,
                 title: Text(group.name),
+                flexibleSpace: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF36A876), Color(0xFF5CC499)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.settings_outlined),
                     onPressed: () => _openSettings(context, group),
                   ),
                 ],
-                bottom: const TabBar(
-                  tabs: [
-                    Tab(text: 'Overview'),
-                    Tab(text: 'Expenses'),
-                    Tab(text: 'Settlements'),
-                    Tab(text: 'History'),
-                  ],
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(72),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: TabBar(
+                        indicator: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        indicatorPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                        labelColor: Theme.of(context).colorScheme.primary,
+                        unselectedLabelColor: Colors.white,
+                        labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+                        tabs: const [
+                          Tab(text: 'Overview'),
+                          Tab(text: 'Expenses'),
+                          Tab(text: 'Settlements'),
+                          Tab(text: 'History'),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              floatingActionButton: FloatingActionButton(
+              floatingActionButton: FloatingActionButton.extended(
                 onPressed: () => _showActionSheet(context, group),
-                child: const Icon(Icons.add),
+                icon: const Icon(Icons.add),
+                label: const Text('Add'),
               ),
-              body: TabBarView(
-                children: [
-                  _OverviewTab(group: group),
-                  _ExpensesTab(group: group),
-                  _SettlementsTab(group: group),
-                  _HistoryTab(group: group),
-                ],
+              body: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFF4FAF6), Color(0xFFF0F7F2)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+                child: TabBarView(
+                  children: [
+                    _OverviewTab(group: group),
+                    _ExpensesTab(group: group),
+                    _SettlementsTab(group: group),
+                    _HistoryTab(group: group),
+                  ],
+                ),
               ),
             ),
           );
@@ -417,100 +459,303 @@ class _OverviewTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final balances = group.balances;
-    final theme = Theme.of(context);
+    final members = group.members;
+    final maxNet = balances.values.fold<double>(
+      0,
+      (previousValue, element) => element.net.abs() > previousValue ? element.net.abs() : previousValue,
+    );
+
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 120),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Base currency: ${group.baseCurrency}'),
-                if (group.note != null) ...[
-                  const SizedBox(height: 8),
-                  Text(group.note!),
-                ],
-              ],
-            ),
-          ),
+        _GroupOverviewHero(group: group),
+        const SizedBox(height: 24),
+        Text(
+          'Member balances',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 16),
-        Text('Member balances', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 12),
-        for (final member in group.members)
-          _MemberBalanceTile(
-            member: member,
-            balance: balances[member.id],
-            currency: group.baseCurrency,
-          ),
+        if (members.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 8)),
+              ],
+            ),
+            child: const Text('Invite a friend to start splitting expenses.'),
+          )
+        else
+          for (final member in members)
+            _MemberBalanceCard(
+              member: member,
+              balance: balances[member.id],
+              currency: group.baseCurrency,
+              maxNet: maxNet == 0 ? 1 : maxNet,
+            ),
       ],
     );
   }
 }
 
-class _MemberBalanceTile extends StatelessWidget {
-  const _MemberBalanceTile({required this.member, required this.balance, required this.currency});
+class _GroupOverviewHero extends StatelessWidget {
+  const _GroupOverviewHero({required this.group});
 
-  final GroupMember member;
-  final MemberBalance? balance;
-  final String currency;
+  final GroupDetail group;
 
   @override
   Widget build(BuildContext context) {
-    final amount = balance?.net ?? 0;
-    final theme = Theme.of(context);
-    final color = amount >= 0 ? Colors.green : Colors.red;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    member.displayName,
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-                Text(
-                  '$currency ${amount.toStringAsFixed(2)}',
-                  style: theme.textTheme.titleMedium?.copyWith(color: color, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _BalanceBreakdownRow(label: 'Paid', value: balance?.paid ?? 0, currency: currency),
-            _BalanceBreakdownRow(label: 'Owes', value: balance?.owed ?? 0, currency: currency),
-            _BalanceBreakdownRow(label: 'Received', value: balance?.settlementsIn ?? 0, currency: currency),
-            _BalanceBreakdownRow(label: 'Sent', value: balance?.settlementsOut ?? 0, currency: currency),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF3FB888), Color(0xFF5FCEA1)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 18, offset: const Offset(0, 12)),
+        ],
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Colors.white.withOpacity(0.2),
+                foregroundColor: Colors.white,
+                child: const Icon(Icons.groups_rounded),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                group.name,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _OverviewStatChip(
+                icon: Icons.currency_exchange,
+                label: 'Base currency',
+                value: group.baseCurrency,
+              ),
+              _OverviewStatChip(
+                icon: Icons.receipt_long,
+                label: 'Total expenses',
+                value: '${group.baseCurrency} ${group.totalExpenses.toStringAsFixed(2)}',
+              ),
+              _OverviewStatChip(
+                icon: Icons.handshake,
+                label: 'Settlements',
+                value: '${group.baseCurrency} ${group.totalSettlements.toStringAsFixed(2)}',
+              ),
+              if (group.note != null && group.note!.isNotEmpty)
+                _OverviewStatChip(
+                  icon: Icons.sticky_note_2_outlined,
+                  label: 'Notes',
+                  value: group.note!,
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-class _BalanceBreakdownRow extends StatelessWidget {
-  const _BalanceBreakdownRow({required this.label, required this.value, required this.currency});
+class _OverviewStatChip extends StatelessWidget {
+  const _OverviewStatChip({required this.icon, required this.label, required this.value});
 
+  final IconData icon;
   final String label;
-  final double value;
-  final String currency;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(width: 90, child: Text(label)),
-          Expanded(
-            child: Text('$currency ${value.toStringAsFixed(2)}'),
+          Icon(icon, color: Colors.white),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.white70)),
+              const SizedBox(height: 4),
+              Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MemberBalanceCard extends StatelessWidget {
+  const _MemberBalanceCard({
+    required this.member,
+    required this.balance,
+    required this.currency,
+    required this.maxNet,
+  });
+
+  final GroupMember member;
+  final MemberBalance? balance;
+  final String currency;
+  final double maxNet;
+
+  @override
+  Widget build(BuildContext context) {
+    final net = balance?.net ?? 0;
+    final positive = net >= 0;
+    final progress = (net.abs() / maxNet).clamp(0, 1);
+    final accent = positive ? Colors.green.shade600 : Colors.red.shade600;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 14, offset: const Offset(0, 10)),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: accent.withOpacity(0.12),
+                foregroundColor: accent,
+                child: Text(member.displayName.characters.first.toUpperCase()),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      member.displayName,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      positive ? 'Friends owe ${member.displayName.split(' ').first}' : '${member.displayName.split(' ').first} owes friends',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('Net', style: Theme.of(context).textTheme.labelLarge),
+                  Text(
+                    '$currency ${net.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(color: accent, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation<Color>(accent),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _BalanceStatChip(
+                icon: Icons.payments,
+                label: 'Paid',
+                value: balance?.paid ?? 0,
+                currency: currency,
+                color: Colors.blueGrey,
+              ),
+              _BalanceStatChip(
+                icon: Icons.shopping_cart_checkout,
+                label: 'Owes',
+                value: balance?.owed ?? 0,
+                currency: currency,
+                color: Colors.deepOrange,
+              ),
+              _BalanceStatChip(
+                icon: Icons.south_east,
+                label: 'Sent',
+                value: balance?.settlementsOut ?? 0,
+                currency: currency,
+                color: Colors.redAccent,
+              ),
+              _BalanceStatChip(
+                icon: Icons.north_east,
+                label: 'Received',
+                value: balance?.settlementsIn ?? 0,
+                currency: currency,
+                color: Colors.teal,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BalanceStatChip extends StatelessWidget {
+  const _BalanceStatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.currency,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final double value;
+  final String currency;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            '$label • $currency ${value.toStringAsFixed(2)}',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(color: color, fontWeight: FontWeight.w600),
           ),
         ],
       ),

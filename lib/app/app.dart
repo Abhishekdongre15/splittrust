@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'theme/app_theme.dart';
 import '../features/buy_plan/cubit/buy_plan_cubit.dart';
+import '../features/buy_plan/views/buy_plan_sheet.dart';
 import '../features/dashboard/cubit/dashboard_cubit.dart';
 import '../features/dashboard/views/dashboard_view.dart';
 import '../features/groups/cubit/group_cubit.dart';
@@ -83,9 +84,22 @@ class _HomeViewState extends State<_HomeView> {
     ];
     final titles = ['Dashboard', 'Groups', 'Reports', 'Settings'];
     return Scaffold(
-      appBar: AppBar(title: Text(titles[_index])),
+      extendBody: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: Text(titles[_index]),
+        actions: [
+          if (_index == 0)
+            IconButton(
+              tooltip: 'Buy plans',
+              icon: const Icon(Icons.workspace_premium_outlined),
+              onPressed: () => _openBuyPlans(context),
+            ),
+        ],
+      ),
       body: IndexedStack(index: _index, children: pages),
       bottomNavigationBar: NavigationBar(
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         selectedIndex: _index,
         onDestinationSelected: (value) => setState(() => _index = value),
         destinations: const [
@@ -96,5 +110,14 @@ class _HomeViewState extends State<_HomeView> {
         ],
       ),
     );
+}
+
+  void _openBuyPlans(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => const BuyPlanSheet(),
+    );
+    context.read<BuyPlanCubit>().load();
   }
 }
