@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:splittrust/features/buy_plan/cubit/buy_plan_cubit.dart';
+import 'package:splittrust/features/buy_plan/cubit/buy_plan_state.dart';
+import 'package:splittrust/features/buy_plan/models/buy_plan.dart';
+import 'package:splittrust/features/buy_plan/views/buy_plan_sheet.dart';
+import 'package:splittrust/features/dashboard/cubit/dashboard_cubit.dart';
+import 'package:splittrust/features/dashboard/cubit/dashboard_state.dart';
+import 'package:splittrust/features/dashboard/models/dashboard_models.dart';
 
-import '../../buy_plan/cubit/buy_plan_cubit.dart';
-import '../../buy_plan/cubit/buy_plan_state.dart';
-import '../../buy_plan/views/buy_plan_sheet.dart';
-import '../cubit/dashboard_cubit.dart';
-import '../cubit/dashboard_state.dart';
-import '../models/dashboard_models.dart';
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key});

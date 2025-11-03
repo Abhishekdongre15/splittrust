@@ -239,7 +239,7 @@ double roundBankers(double value, [int fractionDigits = 2]) {
 }
 
 class GroupDetail extends Equatable {
-  const GroupDetail({
+  GroupDetail({
     required this.id,
     required this.name,
     required this.baseCurrency,
@@ -254,6 +254,7 @@ class GroupDetail extends Equatable {
         expenses = List.unmodifiable(expenses),
         settlements = List.unmodifiable(settlements),
         history = List.unmodifiable(history);
+
 
   final String id;
   final String name;
