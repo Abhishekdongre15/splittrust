@@ -12,6 +12,46 @@ enum GroupHistoryType {
   note,
 }
 
+enum GroupDefaultSplitStrategy {
+  paidByYouEqual,
+  splitByLastPayer,
+  customTemplate,
+}
+
+extension GroupDefaultSplitStrategyX on GroupDefaultSplitStrategy {
+  String get title {
+    switch (this) {
+      case GroupDefaultSplitStrategy.paidByYouEqual:
+        return 'Paid by you and split equally';
+      case GroupDefaultSplitStrategy.splitByLastPayer:
+        return 'Match the last payer split';
+      case GroupDefaultSplitStrategy.customTemplate:
+        return 'Use a saved custom split';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case GroupDefaultSplitStrategy.paidByYouEqual:
+        return 'Expenses you add will default to you paying and everyone splitting evenly.';
+      case GroupDefaultSplitStrategy.splitByLastPayer:
+        return 'Start new expenses with the previous payer and participant mix.';
+      case GroupDefaultSplitStrategy.customTemplate:
+        return 'Apply your saved percentages or exact shares automatically.';
+    }
+  }
+
+  bool get requiresPremium {
+    switch (this) {
+      case GroupDefaultSplitStrategy.paidByYouEqual:
+        return false;
+      case GroupDefaultSplitStrategy.splitByLastPayer:
+      case GroupDefaultSplitStrategy.customTemplate:
+        return true;
+    }
+  }
+}
+
 class MemberProfile extends Equatable {
   const MemberProfile({required this.id, required this.displayName});
 
@@ -207,6 +247,8 @@ class GroupDetail extends Equatable {
     required List<GroupExpense> expenses,
     required List<GroupSettlement> settlements,
     required List<GroupHistoryEntry> history,
+    this.simplifyDebts = true,
+    this.defaultSplitStrategy = GroupDefaultSplitStrategy.paidByYouEqual,
     this.note,
   })  : members = List.unmodifiable(members),
         expenses = List.unmodifiable(expenses),
@@ -220,6 +262,8 @@ class GroupDetail extends Equatable {
   final List<GroupExpense> expenses;
   final List<GroupSettlement> settlements;
   final List<GroupHistoryEntry> history;
+  final bool simplifyDebts;
+  final GroupDefaultSplitStrategy defaultSplitStrategy;
   final String? note;
 
   GroupDetail copyWith({
@@ -230,6 +274,8 @@ class GroupDetail extends Equatable {
     List<GroupExpense>? expenses,
     List<GroupSettlement>? settlements,
     List<GroupHistoryEntry>? history,
+    bool? simplifyDebts,
+    GroupDefaultSplitStrategy? defaultSplitStrategy,
     String? note,
   }) {
     return GroupDetail(
@@ -240,6 +286,8 @@ class GroupDetail extends Equatable {
       expenses: expenses ?? this.expenses,
       settlements: settlements ?? this.settlements,
       history: history ?? this.history,
+      simplifyDebts: simplifyDebts ?? this.simplifyDebts,
+      defaultSplitStrategy: defaultSplitStrategy ?? this.defaultSplitStrategy,
       note: note ?? this.note,
     );
   }
@@ -311,5 +359,16 @@ class GroupDetail extends Equatable {
   double get totalSettlements => settlements.fold<double>(0, (value, s) => value + s.amount);
 
   @override
-  List<Object?> get props => [id, name, baseCurrency, members, expenses, settlements, history, note];
+  List<Object?> get props => [
+        id,
+        name,
+        baseCurrency,
+        members,
+        expenses,
+        settlements,
+        history,
+        simplifyDebts,
+        defaultSplitStrategy,
+        note,
+      ];
 }

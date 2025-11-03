@@ -11,6 +11,8 @@ class GroupCubit extends Cubit<GroupState> {
 
   final GroupRepository _repository;
 
+  String get currentUserId => _repository.currentUserId;
+
   Future<void> load() async {
     emit(state.copyWith(status: GroupStatus.loading, clearError: true));
     try {
@@ -122,6 +124,97 @@ class GroupCubit extends Cubit<GroupState> {
       );
     } catch (error) {
       emit(state.copyWith(status: GroupStatus.error, errorMessage: error.toString()));
+    }
+  }
+
+  Future<void> updateSimplifyDebts({required String groupId, required bool simplify}) async {
+    emit(state.copyWith(status: GroupStatus.mutating, clearError: true));
+    try {
+      final updated = await _repository.updateSimplifyDebts(groupId: groupId, simplify: simplify);
+      final updatedGroups = _replaceGroup(updated);
+      emit(
+        state.copyWith(
+          status: GroupStatus.ready,
+          groups: updatedGroups,
+          directory: _mergeDirectoryWithGroup(state.directory, updated),
+          clearError: true,
+        ),
+      );
+    } catch (error) {
+      emit(state.copyWith(status: GroupStatus.error, errorMessage: error.toString()));
+    }
+  }
+
+  Future<void> updateDefaultSplit({
+    required String groupId,
+    required GroupDefaultSplitStrategy strategy,
+  }) async {
+    emit(state.copyWith(status: GroupStatus.mutating, clearError: true));
+    try {
+      final updated = await _repository.updateDefaultSplit(groupId: groupId, strategy: strategy);
+      final updatedGroups = _replaceGroup(updated);
+      emit(
+        state.copyWith(
+          status: GroupStatus.ready,
+          groups: updatedGroups,
+          directory: _mergeDirectoryWithGroup(state.directory, updated),
+          clearError: true,
+        ),
+      );
+    } catch (error) {
+      emit(state.copyWith(status: GroupStatus.error, errorMessage: error.toString()));
+    }
+  }
+
+  Future<bool> leaveGroup({required String groupId, required String memberId}) async {
+    emit(state.copyWith(status: GroupStatus.mutating, clearError: true));
+    try {
+      final updated = await _repository.leaveGroup(groupId: groupId, memberId: memberId);
+      final updatedGroups = List<GroupDetail>.from(state.groups);
+      if (updated == null) {
+        updatedGroups.removeWhere((group) => group.id == groupId);
+      } else {
+        final index = updatedGroups.indexWhere((group) => group.id == updated.id);
+        if (index >= 0) {
+          updatedGroups[index] = updated;
+        } else {
+          updatedGroups.add(updated);
+        }
+      }
+      emit(
+        state.copyWith(
+          status: GroupStatus.ready,
+          groups: updatedGroups,
+          directory: updated == null
+              ? state.directory
+              : _mergeDirectoryWithGroup(state.directory, updated),
+          clearError: true,
+        ),
+      );
+      return true;
+    } catch (error) {
+      emit(state.copyWith(status: GroupStatus.error, errorMessage: error.toString()));
+      return false;
+    }
+  }
+
+  Future<bool> deleteGroup({required String groupId}) async {
+    emit(state.copyWith(status: GroupStatus.mutating, clearError: true));
+    try {
+      await _repository.deleteGroup(groupId: groupId);
+      final updatedGroups = List<GroupDetail>.from(state.groups)
+        ..removeWhere((group) => group.id == groupId);
+      emit(
+        state.copyWith(
+          status: GroupStatus.ready,
+          groups: updatedGroups,
+          clearError: true,
+        ),
+      );
+      return true;
+    } catch (error) {
+      emit(state.copyWith(status: GroupStatus.error, errorMessage: error.toString()));
+      return false;
     }
   }
 

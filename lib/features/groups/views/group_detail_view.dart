@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/group_cubit.dart';
 import '../cubit/group_state.dart';
 import '../models/group_models.dart';
+import 'group_settings_view.dart';
 
 class GroupDetailPage extends StatelessWidget {
   const GroupDetailPage({super.key, required this.groupId});
@@ -35,6 +36,12 @@ class GroupDetailPage extends StatelessWidget {
             child: Scaffold(
               appBar: AppBar(
                 title: Text(group.name),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.settings_outlined),
+                    onPressed: () => _openSettings(context, group),
+                  ),
+                ],
                 bottom: const TabBar(
                   tabs: [
                     Tab(text: 'Overview'),
@@ -93,6 +100,14 @@ class GroupDetailPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  void _openSettings(BuildContext context, GroupDetail group) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => GroupSettingsPage(groupId: group.id),
+      ),
     );
   }
 

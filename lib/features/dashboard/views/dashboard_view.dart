@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../plans/cubit/plan_cubit.dart';
 import '../../plans/cubit/plan_state.dart';
-import '../../plans/views/plan_sheet.dart';
+import '../../plans/views/buy_plan_sheet.dart';
 import '../cubit/dashboard_cubit.dart';
 import '../cubit/dashboard_state.dart';
 import '../models/dashboard_models.dart';
@@ -50,7 +50,7 @@ class DashboardView extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => const PlanSheet(),
+      builder: (context) => const BuyPlanSheet(),
     );
     context.read<PlanCubit>().load();
   }

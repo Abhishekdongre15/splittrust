@@ -10,6 +10,8 @@ class GroupDataSnapshot {
 }
 
 abstract class GroupRepository {
+  String get currentUserId;
+
   Future<GroupDataSnapshot> load();
 
   MemberProfile ensureMember(String displayName);
@@ -41,6 +43,17 @@ abstract class GroupRepository {
     String? reference,
     DateTime? recordedAt,
   });
+
+  Future<GroupDetail> updateSimplifyDebts({required String groupId, required bool simplify});
+
+  Future<GroupDetail> updateDefaultSplit({
+    required String groupId,
+    required GroupDefaultSplitStrategy strategy,
+  });
+
+  Future<GroupDetail?> leaveGroup({required String groupId, required String memberId});
+
+  Future<void> deleteGroup({required String groupId});
 }
 
 class MockGroupRepository implements GroupRepository {
@@ -50,6 +63,10 @@ class MockGroupRepository implements GroupRepository {
 
   final Map<String, MemberProfile> _memberDirectory = {};
   final List<GroupDetail> _groups = [];
+  late final String _currentUserId;
+
+  @override
+  String get currentUserId => _currentUserId;
 
   @override
   Future<GroupDataSnapshot> load() async {
@@ -131,6 +148,8 @@ class MockGroupRepository implements GroupRepository {
       expenses: const [],
       settlements: const [],
       history: history,
+      simplifyDebts: true,
+      defaultSplitStrategy: GroupDefaultSplitStrategy.paidByYouEqual,
       note: note?.trim().isEmpty ?? true ? null : note?.trim(),
     );
     _groups.add(group);
@@ -233,8 +252,106 @@ class MockGroupRepository implements GroupRepository {
     return updatedGroup;
   }
 
+  @override
+  Future<GroupDetail> updateSimplifyDebts({required String groupId, required bool simplify}) async {
+    final index = _groups.indexWhere((group) => group.id == groupId);
+    if (index == -1) {
+      throw StateError('Group not found');
+    }
+    final group = _groups[index];
+    final now = DateTime.now();
+    final history = List<GroupHistoryEntry>.from(group.history)
+      ..add(
+        GroupHistoryEntry(
+          id: _generateId('hist'),
+          type: GroupHistoryType.note,
+          title: simplify ? 'Simplify group debts enabled' : 'Simplify group debts disabled',
+          subtitle: 'Updated by ${_nameForMember(group, _currentUserId)}',
+          timestamp: now,
+        ),
+      );
+    final updated = group.copyWith(simplifyDebts: simplify, history: history);
+    _groups[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<GroupDetail> updateDefaultSplit({
+    required String groupId,
+    required GroupDefaultSplitStrategy strategy,
+  }) async {
+    final index = _groups.indexWhere((group) => group.id == groupId);
+    if (index == -1) {
+      throw StateError('Group not found');
+    }
+    final group = _groups[index];
+    final history = List<GroupHistoryEntry>.from(group.history)
+      ..add(
+        GroupHistoryEntry(
+          id: _generateId('hist'),
+          type: GroupHistoryType.note,
+          title: 'Default split updated',
+          subtitle: '${strategy.title} • ${_nameForMember(group, _currentUserId)}',
+          timestamp: DateTime.now(),
+        ),
+      );
+    final updated = group.copyWith(defaultSplitStrategy: strategy, history: history);
+    _groups[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<GroupDetail?> leaveGroup({required String groupId, required String memberId}) async {
+    final index = _groups.indexWhere((group) => group.id == groupId);
+    if (index == -1) {
+      throw StateError('Group not found');
+    }
+    final group = _groups[index];
+    final member = group.memberById(memberId);
+    if (member == null) {
+      throw StateError('Member not part of this group');
+    }
+    final balance = group.balances[memberId];
+    final outstanding = balance?.net ?? 0;
+    if (outstanding.abs() > 0.01) {
+      throw StateError('You have outstanding balances in this group. Settle up before leaving.');
+    }
+    final updatedMembers = List<GroupMember>.from(group.members)
+      ..removeWhere((element) => element.id == memberId);
+    if (updatedMembers.isEmpty) {
+      _groups.removeAt(index);
+      return null;
+    }
+    if (!updatedMembers.any((element) => element.role == GroupRole.admin)) {
+      updatedMembers[0] = updatedMembers[0].copyWith(role: GroupRole.admin);
+    }
+    final history = List<GroupHistoryEntry>.from(group.history)
+      ..add(
+        GroupHistoryEntry(
+          id: _generateId('hist'),
+          type: GroupHistoryType.note,
+          title: '${member.displayName} left the group',
+          subtitle: 'No outstanding balance',
+          timestamp: DateTime.now(),
+        ),
+      );
+    final updated = group.copyWith(members: updatedMembers, history: history);
+    _groups[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<void> deleteGroup({required String groupId}) async {
+    final index = _groups.indexWhere((group) => group.id == groupId);
+    if (index == -1) {
+      throw StateError('Group not found');
+    }
+    _groups.removeAt(index);
+  }
+
   void _seed() {
     final aqua = ensureMember('AquaFire Solutions');
+    _currentUserId = aqua.id;
     final ben = ensureMember('Ben Mathews');
     final clara = ensureMember('Clara Singh');
     final divya = ensureMember('Divya Patel');
@@ -348,6 +465,8 @@ class MockGroupRepository implements GroupRepository {
       expenses: goaExpenses,
       settlements: goaSettlements,
       history: goaHistory,
+      simplifyDebts: true,
+      defaultSplitStrategy: GroupDefaultSplitStrategy.paidByYouEqual,
       note: 'Friends trip to Goa with villa stay and adventures.',
     );
     _groups.add(goaGroup);
@@ -412,6 +531,8 @@ class MockGroupRepository implements GroupRepository {
       expenses: officeExpenses,
       settlements: const [],
       history: officeHistory,
+      simplifyDebts: false,
+      defaultSplitStrategy: GroupDefaultSplitStrategy.splitByLastPayer,
       note: 'Shared workspace and team meals.',
     );
     _groups.add(officeGroup);

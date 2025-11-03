@@ -6,8 +6,8 @@ import '../cubit/plan_cubit.dart';
 import '../cubit/plan_state.dart';
 import '../models/plan.dart';
 
-class PlanSheet extends StatelessWidget {
-  const PlanSheet({super.key});
+class BuyPlanSheet extends StatelessWidget {
+  const BuyPlanSheet({super.key});
 
   @override
   Widget build(BuildContext context) {
