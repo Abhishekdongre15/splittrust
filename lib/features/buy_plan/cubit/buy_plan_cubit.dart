@@ -1,19 +1,19 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../models/plan.dart';
-import 'plan_state.dart';
+import '../models/buy_plan.dart';
+import 'buy_plan_state.dart';
 
-class PlanCubit extends Cubit<PlanState> {
-  PlanCubit() : super(const PlanState());
+class BuyPlanCubit extends Cubit<BuyPlanState> {
+  BuyPlanCubit() : super(const BuyPlanState());
 
   Future<void> load() async {
-    if (state.status == PlanStatus.loading) return;
-    emit(state.copyWith(status: PlanStatus.loading));
+    if (state.status == BuyPlanStatus.loading) return;
+    emit(state.copyWith(status: BuyPlanStatus.loading));
     try {
       await Future<void>.delayed(const Duration(milliseconds: 300));
       const plans = [
-        Plan(
-          tier: PlanTier.silver,
+        BuyPlan(
+          tier: BuyPlanTier.silver,
           priceLabel: 'Free',
           description: 'Track shared expenses with equal splits and ad support.',
           features: [
@@ -23,8 +23,8 @@ class PlanCubit extends Cubit<PlanState> {
           ],
           highlight: false,
         ),
-        Plan(
-          tier: PlanTier.gold,
+        BuyPlan(
+          tier: BuyPlanTier.gold,
           priceLabel: '₹249/month',
           description: 'Unlock advanced split modes, receipts, and exports.',
           features: [
@@ -35,8 +35,8 @@ class PlanCubit extends Cubit<PlanState> {
           ],
           highlight: true,
         ),
-        Plan(
-          tier: PlanTier.diamond,
+        BuyPlan(
+          tier: BuyPlanTier.diamond,
           priceLabel: '₹6,999 lifetime',
           description: 'Get OCR, AI insights, and smart settlement automation forever.',
           features: [
@@ -48,9 +48,9 @@ class PlanCubit extends Cubit<PlanState> {
           highlight: false,
         ),
       ];
-      emit(state.copyWith(status: PlanStatus.ready, plans: plans));
+      emit(state.copyWith(status: BuyPlanStatus.ready, plans: plans));
     } catch (error) {
-      emit(state.copyWith(status: PlanStatus.error, errorMessage: error.toString()));
+      emit(state.copyWith(status: BuyPlanStatus.error, errorMessage: error.toString()));
     }
   }
 }

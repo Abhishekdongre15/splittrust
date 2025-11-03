@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'theme/app_theme.dart';
+import '../features/buy_plan/cubit/buy_plan_cubit.dart';
 import '../features/dashboard/cubit/dashboard_cubit.dart';
 import '../features/dashboard/views/dashboard_view.dart';
 import '../features/groups/cubit/group_cubit.dart';
@@ -11,7 +12,6 @@ import '../features/groups/views/group_list_view.dart';
 import '../features/onboarding/cubit/onboarding_cubit.dart';
 import '../features/onboarding/cubit/onboarding_state.dart';
 import '../features/onboarding/views/onboarding_flow_view.dart';
-import '../features/plans/cubit/plan_cubit.dart';
 import '../features/reports/views/reports_view.dart';
 import '../features/settings/views/settings_view.dart';
 import '../features/web/views/web_landing_view.dart';
@@ -34,7 +34,7 @@ class SplitTrustApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => OnboardingCubit()..start()),
         BlocProvider(create: (_) => DashboardCubit()..load()),
-        BlocProvider(create: (_) => PlanCubit()..load()),
+        BlocProvider(create: (_) => BuyPlanCubit()..load()),
         BlocProvider(create: (_) => GroupCubit(repository: MockGroupRepository())..load()),
       ],
       child: MaterialApp(

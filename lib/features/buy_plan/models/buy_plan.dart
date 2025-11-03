@@ -1,33 +1,33 @@
 import 'package:equatable/equatable.dart';
 
-enum PlanTier { silver, gold, diamond }
+enum BuyPlanTier { silver, gold, diamond }
 
-extension PlanTierDisplay on PlanTier {
+extension BuyPlanTierDisplay on BuyPlanTier {
   String get displayName {
     switch (this) {
-      case PlanTier.silver:
+      case BuyPlanTier.silver:
         return 'Silver';
-      case PlanTier.gold:
+      case BuyPlanTier.gold:
         return 'Gold';
-      case PlanTier.diamond:
+      case BuyPlanTier.diamond:
         return 'Diamond';
     }
   }
 
   String get subtitle {
     switch (this) {
-      case PlanTier.silver:
+      case BuyPlanTier.silver:
         return 'Free · Equal splits · Ads';
-      case PlanTier.gold:
+      case BuyPlanTier.gold:
         return 'Subscription · Advanced splits · Multi-currency';
-      case PlanTier.diamond:
+      case BuyPlanTier.diamond:
         return 'Lifetime · OCR · AI insights · Smart settlements';
     }
   }
 }
 
-class Plan extends Equatable {
-  const Plan({
+class BuyPlan extends Equatable {
+  const BuyPlan({
     required this.tier,
     required this.priceLabel,
     required this.description,
@@ -35,7 +35,7 @@ class Plan extends Equatable {
     required this.highlight,
   });
 
-  final PlanTier tier;
+  final BuyPlanTier tier;
   final String priceLabel;
   final String description;
   final List<String> features;
