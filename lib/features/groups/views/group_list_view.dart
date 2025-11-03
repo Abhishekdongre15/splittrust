@@ -348,12 +348,14 @@ class _GroupsHeader extends StatelessWidget {
 class _GroupCard extends StatelessWidget {
   const _GroupCard({required this.group, required this.onTap});
 
-  final GroupSummary group;
+  final GroupDetail group;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final positive = group.netBalance >= 0;
+    final currentUserId = context.read<GroupCubit>().currentUserId;
+    final net = group.balances[currentUserId]?.net ?? 0;
+    final positive = net >= 0;
     final balanceColor = positive ? Colors.green.shade600 : Colors.red.shade600;
     final chipColor = positive ? Colors.green.shade50 : Colors.red.shade50;
 
@@ -418,7 +420,7 @@ class _GroupCard extends StatelessWidget {
                     children: [
                       Text('Net balance', style: Theme.of(context).textTheme.labelLarge),
                       Text(
-                        '${group.baseCurrency} ${group.netBalance.toStringAsFixed(2)}',
+                        '${group.baseCurrency} ${net.toStringAsFixed(2)}',
                         style: Theme.of(context)
                             .textTheme
                             .titleMedium

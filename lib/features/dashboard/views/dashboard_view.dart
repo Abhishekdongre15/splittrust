@@ -5,6 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../buy_plan/cubit/buy_plan_cubit.dart';
 import '../../buy_plan/cubit/buy_plan_state.dart';
 import '../../buy_plan/views/buy_plan_sheet.dart';
+import '../../groups/cubit/group_cubit.dart';
+import '../../groups/cubit/group_state.dart';
+import '../../groups/models/group_models.dart';
 import '../cubit/dashboard_cubit.dart';
 import '../cubit/dashboard_state.dart';
 import '../models/dashboard_models.dart';
@@ -75,7 +78,7 @@ class DashboardView extends StatelessWidget {
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
                     sliver: SliverToBoxAdapter(
-                      child: _GroupCarousel(groups: state.groups),
+                      child: _GroupSection(),
                     ),
                   ),
                   SliverPadding(
@@ -326,10 +329,61 @@ class _QuickActionChip extends StatelessWidget {
   }
 }
 
-class _GroupCarousel extends StatelessWidget {
-  const _GroupCarousel({required this.groups});
+class _GroupSection extends StatelessWidget {
+  const _GroupSection();
 
-  final List<GroupSummary> groups;
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<GroupCubit, GroupState>(
+      builder: (context, state) {
+        if (state.status == GroupStatus.loading && state.groups.isEmpty) {
+          return Container(
+            height: 160,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            ),
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (state.errorMessage != null && state.groups.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'We couldn\'t load your groups. Pull to refresh to try again.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final groups = state.groups;
+        final currentUserId = context.read<GroupCubit>().currentUserId;
+        return _GroupCarousel(groups: groups, currentUserId: currentUserId);
+      },
+    );
+  }
+}
+
+class _GroupCarousel extends StatelessWidget {
+  const _GroupCarousel({required this.groups, required this.currentUserId});
+
+  final List<GroupDetail> groups;
+  final String currentUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -381,7 +435,9 @@ class _GroupCarousel extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 16),
             itemBuilder: (context, index) {
               final group = groups[index];
-              final positive = group.netBalance >= 0;
+              final balances = group.balances;
+              final net = balances[currentUserId]?.net ?? 0;
+              final positive = net >= 0;
               final balanceColor = positive ? Colors.green.shade600 : Colors.red.shade600;
               return Container(
                 width: 220,
@@ -432,7 +488,7 @@ class _GroupCarousel extends StatelessWidget {
                             Text('Balance', style: Theme.of(context).textTheme.labelLarge),
                             const SizedBox(height: 4),
                             Text(
-                              '${group.baseCurrency} ${group.netBalance.toStringAsFixed(2)}',
+                              '${group.baseCurrency} ${net.toStringAsFixed(2)}',
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium
