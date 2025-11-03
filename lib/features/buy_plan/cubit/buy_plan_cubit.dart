@@ -22,6 +22,7 @@ class BuyPlanCubit extends Cubit<BuyPlanState> {
             'Ad-supported experience',
           ],
           highlight: false,
+          amountPaise: 0,
         ),
         BuyPlan(
           tier: BuyPlanTier.gold,
@@ -34,6 +35,7 @@ class BuyPlanCubit extends Cubit<BuyPlanState> {
             'Ad-free interface',
           ],
           highlight: true,
+          amountPaise: 24900,
         ),
         BuyPlan(
           tier: BuyPlanTier.diamond,
@@ -46,6 +48,7 @@ class BuyPlanCubit extends Cubit<BuyPlanState> {
             'Premium themes',
           ],
           highlight: false,
+          amountPaise: 699900,
         ),
       ];
       emit(state.copyWith(status: BuyPlanStatus.ready, plans: plans));

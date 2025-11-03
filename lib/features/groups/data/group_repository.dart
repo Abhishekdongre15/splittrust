@@ -51,6 +51,22 @@ abstract class GroupRepository {
     required GroupDefaultSplitStrategy strategy,
   });
 
+  Future<GroupDetail> addMember({
+    required String groupId,
+    required MemberProfile member,
+    GroupRole role = GroupRole.member,
+  });
+
+  Future<GroupDetail> removeMember({
+    required String groupId,
+    required String memberId,
+  });
+
+  Future<GroupDetail> updateBaseCurrency({
+    required String groupId,
+    required String baseCurrency,
+  });
+
   Future<GroupDetail?> leaveGroup({required String groupId, required String memberId});
 
   Future<void> deleteGroup({required String groupId});
@@ -296,6 +312,126 @@ class MockGroupRepository implements GroupRepository {
         ),
       );
     final updated = group.copyWith(defaultSplitStrategy: strategy, history: history);
+    _groups[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<GroupDetail> addMember({
+    required String groupId,
+    required MemberProfile member,
+    GroupRole role = GroupRole.member,
+  }) async {
+    final index = _groups.indexWhere((group) => group.id == groupId);
+    if (index == -1) {
+      throw StateError('Group not found');
+    }
+    final group = _groups[index];
+    final ensured = ensureMember(member.displayName);
+    if (group.members.any((existing) => existing.id == ensured.id)) {
+      throw StateError('${ensured.displayName} is already in this group');
+    }
+    final newMember = GroupMember.fromProfile(ensured, role: role);
+    final updatedMembers = List<GroupMember>.from(group.members)..add(newMember);
+    final addedBy = _memberDirectory[_currentUserId]?.displayName ?? 'Admin';
+    final history = List<GroupHistoryEntry>.from(group.history)
+      ..add(
+        GroupHistoryEntry(
+          id: _generateId('hist'),
+          type: GroupHistoryType.memberAdded,
+          title: '${newMember.displayName} joined',
+          subtitle: role == GroupRole.admin ? 'Appointed as admin' : 'Invited by $addedBy',
+          timestamp: DateTime.now(),
+        ),
+      );
+    final updated = group.copyWith(members: updatedMembers, history: history);
+    _groups[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<GroupDetail> removeMember({
+    required String groupId,
+    required String memberId,
+  }) async {
+    final index = _groups.indexWhere((group) => group.id == groupId);
+    if (index == -1) {
+      throw StateError('Group not found');
+    }
+    final group = _groups[index];
+    final member = group.memberById(memberId);
+    if (member == null) {
+      throw StateError('Member not found');
+    }
+    if (member.role == GroupRole.admin) {
+      throw StateError('Transfer admin rights before removing this member');
+    }
+    final balance = group.balances[memberId];
+    if (balance != null && balance.net.abs() > 0.01) {
+      throw StateError('${member.displayName} still has an outstanding balance');
+    }
+    final updatedMembers = List<GroupMember>.from(group.members)
+      ..removeWhere((existing) => existing.id == memberId);
+    final history = List<GroupHistoryEntry>.from(group.history)
+      ..add(
+        GroupHistoryEntry(
+          id: _generateId('hist'),
+          type: GroupHistoryType.memberRemoved,
+          title: '${member.displayName} removed',
+          subtitle: 'Removed after settling balances',
+          timestamp: DateTime.now(),
+        ),
+      );
+    final updated = group.copyWith(members: updatedMembers, history: history);
+    _groups[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<GroupDetail> updateBaseCurrency({
+    required String groupId,
+    required String baseCurrency,
+  }) async {
+    final index = _groups.indexWhere((group) => group.id == groupId);
+    if (index == -1) {
+      throw StateError('Group not found');
+    }
+    final group = _groups[index];
+    if (group.baseCurrency == baseCurrency) {
+      return group;
+    }
+    final updatedExpenses = group.expenses
+        .map(
+          (expense) => GroupExpense(
+            id: expense.id,
+            title: expense.title,
+            amount: expense.amount,
+            currency: baseCurrency,
+            amountBase: expense.amountBase,
+            paidBy: expense.paidBy,
+            participantIds: List<String>.from(expense.participantIds),
+            shares: List<ExpenseShare>.from(expense.shares),
+            category: expense.category,
+            createdAt: expense.createdAt,
+            notes: expense.notes,
+          ),
+        )
+        .toList();
+    final history = List<GroupHistoryEntry>.from(group.history)
+      ..add(
+        GroupHistoryEntry(
+          id: _generateId('hist'),
+          type: GroupHistoryType.currencyChanged,
+          title: 'Currency updated to $baseCurrency',
+          subtitle: '${group.baseCurrency} → $baseCurrency',
+          timestamp: DateTime.now(),
+        ),
+      );
+    final updated = group.copyWith(
+      baseCurrency: baseCurrency,
+      expenses: updatedExpenses,
+      history: history,
+    );
     _groups[index] = updated;
     return updated;
   }

@@ -7,8 +7,10 @@ enum GroupRole { admin, member }
 enum GroupHistoryType {
   groupCreated,
   memberAdded,
+  memberRemoved,
   expenseAdded,
   settlementRecorded,
+  currencyChanged,
   note,
 }
 

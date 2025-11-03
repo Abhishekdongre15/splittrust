@@ -166,6 +166,71 @@ class GroupCubit extends Cubit<GroupState> {
     }
   }
 
+  Future<void> addMember({
+    required String groupId,
+    required String displayName,
+    GroupRole role = GroupRole.member,
+  }) async {
+    final profile = ensureMember(displayName);
+    emit(state.copyWith(status: GroupStatus.mutating, clearError: true));
+    try {
+      final updated = await _repository.addMember(groupId: groupId, member: profile, role: role);
+      final updatedGroups = _replaceGroup(updated);
+      emit(
+        state.copyWith(
+          status: GroupStatus.ready,
+          groups: updatedGroups,
+          directory: _mergeDirectoryWithGroup(state.directory, updated),
+          clearError: true,
+        ),
+      );
+    } catch (error) {
+      emit(state.copyWith(status: GroupStatus.error, errorMessage: error.toString()));
+    }
+  }
+
+  Future<void> removeMember({
+    required String groupId,
+    required String memberId,
+  }) async {
+    emit(state.copyWith(status: GroupStatus.mutating, clearError: true));
+    try {
+      final updated = await _repository.removeMember(groupId: groupId, memberId: memberId);
+      final updatedGroups = _replaceGroup(updated);
+      emit(
+        state.copyWith(
+          status: GroupStatus.ready,
+          groups: updatedGroups,
+          directory: _mergeDirectoryWithGroup(state.directory, updated),
+          clearError: true,
+        ),
+      );
+    } catch (error) {
+      emit(state.copyWith(status: GroupStatus.error, errorMessage: error.toString()));
+    }
+  }
+
+  Future<void> updateBaseCurrency({
+    required String groupId,
+    required String currency,
+  }) async {
+    emit(state.copyWith(status: GroupStatus.mutating, clearError: true));
+    try {
+      final updated = await _repository.updateBaseCurrency(groupId: groupId, baseCurrency: currency);
+      final updatedGroups = _replaceGroup(updated);
+      emit(
+        state.copyWith(
+          status: GroupStatus.ready,
+          groups: updatedGroups,
+          directory: _mergeDirectoryWithGroup(state.directory, updated),
+          clearError: true,
+        ),
+      );
+    } catch (error) {
+      emit(state.copyWith(status: GroupStatus.error, errorMessage: error.toString()));
+    }
+  }
+
   Future<bool> leaveGroup({required String groupId, required String memberId}) async {
     emit(state.copyWith(status: GroupStatus.mutating, clearError: true));
     try {

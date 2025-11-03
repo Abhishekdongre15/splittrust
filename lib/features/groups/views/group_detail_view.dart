@@ -55,28 +55,40 @@ class GroupDetailPage extends StatelessWidget {
                   ),
                 ],
                 bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(72),
+                  preferredSize: const Size.fromHeight(88),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.18),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
+                    child: Material(
+                      color: Colors.white.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(24),
                       child: TabBar(
+                        indicatorSize: TabBarIndicatorSize.tab,
                         indicator: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(18),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFFFFF), Color(0xFFE8FFF4)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                        indicatorPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                         labelColor: Theme.of(context).colorScheme.primary,
-                        unselectedLabelColor: Colors.white,
-                        labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+                        unselectedLabelColor: Colors.white.withOpacity(0.85),
+                        labelStyle: Theme.of(context)
+                            .textTheme
+                            .labelLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
                         tabs: const [
-                          Tab(text: 'Overview'),
-                          Tab(text: 'Expenses'),
-                          Tab(text: 'Settlements'),
-                          Tab(text: 'History'),
+                          Tab(icon: Icon(Icons.insights_outlined), text: 'Overview'),
+                          Tab(icon: Icon(Icons.receipt_long), text: 'Expenses'),
+                          Tab(icon: Icon(Icons.swap_horiz_rounded), text: 'Settlements'),
+                          Tab(icon: Icon(Icons.history), text: 'History'),
                         ],
                       ),
                     ),
@@ -894,10 +906,14 @@ class _HistoryTab extends StatelessWidget {
         return Icons.group_work_outlined;
       case GroupHistoryType.memberAdded:
         return Icons.person_add_alt;
+      case GroupHistoryType.memberRemoved:
+        return Icons.person_remove_alt_1;
       case GroupHistoryType.expenseAdded:
         return Icons.receipt_long;
       case GroupHistoryType.settlementRecorded:
         return Icons.payments_outlined;
+      case GroupHistoryType.currencyChanged:
+        return Icons.currency_exchange;
       case GroupHistoryType.note:
         return Icons.sticky_note_2_outlined;
     }

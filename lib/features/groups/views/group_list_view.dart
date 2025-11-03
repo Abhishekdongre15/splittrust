@@ -74,10 +74,13 @@ class GroupListView extends StatelessWidget {
               Positioned(
                 right: 24,
                 bottom: 24,
-                child: FloatingActionButton.extended(
-                  onPressed: () => _showCreateGroupSheet(context),
-                  icon: const Icon(Icons.group_add_rounded),
-                  label: const Text('New group'),
+                child: SafeArea(
+                  minimum: const EdgeInsets.only(bottom: 8),
+                  child: FloatingActionButton.extended(
+                    onPressed: () => _showCreateGroupSheet(context),
+                    icon: const Icon(Icons.group_add_rounded),
+                    label: const Text('New group'),
+                  ),
                 ),
               ),
           ],

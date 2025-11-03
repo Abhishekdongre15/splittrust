@@ -33,6 +33,7 @@ class BuyPlan extends Equatable {
     required this.description,
     required this.features,
     required this.highlight,
+    this.amountPaise,
   });
 
   final BuyPlanTier tier;
@@ -40,7 +41,8 @@ class BuyPlan extends Equatable {
   final String description;
   final List<String> features;
   final bool highlight;
+  final int? amountPaise;
 
   @override
-  List<Object?> get props => [tier, priceLabel, description, features, highlight];
+  List<Object?> get props => [tier, priceLabel, description, features, highlight, amountPaise];
 }
