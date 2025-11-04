@@ -14,7 +14,7 @@ import '../features/contacts/cubit/contacts_cubit.dart';
 import '../features/dashboard/cubit/dashboard_cubit.dart';
 import '../features/dashboard/views/dashboard_view.dart';
 import '../features/groups/cubit/group_cubit.dart';
-import '../features/groups/data/group_repository.dart';
+import '../features/groups/data/firebase_group_repository.dart';
 import '../features/groups/views/group_list_view.dart';
 import '../features/onboarding/cubit/onboarding_cubit.dart';
 import '../features/onboarding/views/onboarding_flow_view.dart';
@@ -43,7 +43,9 @@ class SplitTrustApp extends StatelessWidget {
         BlocProvider(create: (_) => OnboardingCubit()),
         BlocProvider(create: (_) => DashboardCubit()..load()),
         BlocProvider(create: (_) => BuyPlanCubit()..load()),
-        BlocProvider(create: (_) => GroupCubit(repository: MockGroupRepository())..load()),
+        BlocProvider(
+          create: (_) => GroupCubit(repository: FirebaseGroupRepository())..load(),
+        ),
         BlocProvider(create: (_) => ContactsCubit(repository: ContactRepository())),
       ],
       child: MaterialApp(
@@ -71,6 +73,7 @@ class _RootMobileView extends StatelessWidget {
             context.read<OnboardingCubit>().finish();
           }
           context.read<ContactsCubit>().load();
+          context.read<GroupCubit>().load();
         }
         if (state.status == AuthStatus.unauthenticated) {
           context.read<OnboardingCubit>().start();
@@ -121,6 +124,18 @@ class _HomeViewState extends State<_HomeView> {
       const SettingsView(),
     ];
     final titles = ['Dashboard', 'Groups', 'Reports', 'Settings'];
+    final navigationBar = NavigationBar(
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      selectedIndex: _index,
+      onDestinationSelected: (value) => setState(() => _index = value),
+      destinations: const [
+        NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+        NavigationDestination(icon: Icon(Icons.groups_outlined), selectedIcon: Icon(Icons.groups), label: 'Groups'),
+        NavigationDestination(icon: Icon(Icons.insert_drive_file_outlined), selectedIcon: Icon(Icons.insert_drive_file), label: 'Reports'),
+        NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
+      ],
+    );
+
     return Scaffold(
       extendBody: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -135,20 +150,35 @@ class _HomeViewState extends State<_HomeView> {
             ),
         ],
       ),
-      body: IndexedStack(index: _index, children: pages),
-      bottomNavigationBar: NavigationBar(
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
-          NavigationDestination(icon: Icon(Icons.groups_outlined), selectedIcon: Icon(Icons.groups), label: 'Groups'),
-          NavigationDestination(icon: Icon(Icons.insert_drive_file_outlined), selectedIcon: Icon(Icons.insert_drive_file), label: 'Reports'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
+      body: Column(
+        children: [
+          Expanded(child: IndexedStack(index: _index, children: pages)),
+          SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                navigationBar,
+                if (_index == 0)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                    child: FilledButton.icon(
+                      onPressed: () => showComingSoonSnackBar(
+                        context,
+                        'Expense flow opens here',
+                      ),
+                      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+                      icon: const Icon(Icons.add_circle_outline_rounded),
+                      label: const Text('Add expense'),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
-}
+  }
 
   void _openBuyPlans(BuildContext context) {
     showModalBottomSheet<void>(
