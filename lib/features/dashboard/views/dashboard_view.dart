@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../buy_plan/cubit/buy_plan_cubit.dart';
-import '../../buy_plan/cubit/buy_plan_state.dart';
 import '../../buy_plan/views/buy_plan_sheet.dart';
 import '../../contacts/cubit/contacts_cubit.dart';
 import '../../contacts/cubit/contacts_state.dart';
@@ -15,8 +14,17 @@ import '../cubit/dashboard_cubit.dart';
 import '../cubit/dashboard_state.dart';
 import '../models/dashboard_models.dart';
 
-class DashboardView extends StatelessWidget {
+enum _DashboardListTab { groups, friends }
+
+class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
+
+  @override
+  State<DashboardView> createState() => _DashboardViewState();
+}
+
+class _DashboardViewState extends State<DashboardView> {
+  _DashboardListTab _tab = _DashboardListTab.groups;
 
   @override
   Widget build(BuildContext context) {
@@ -33,90 +41,150 @@ class DashboardView extends StatelessWidget {
       },
       child: BlocBuilder<DashboardCubit, DashboardState>(
         builder: (context, state) {
-        switch (state.status) {
-          case DashboardStatus.idle:
-          case DashboardStatus.loading:
-            return const Center(child: CircularProgressIndicator());
-          case DashboardStatus.error:
-            return Center(child: Text(state.errorMessage ?? 'Something went wrong'));
-          case DashboardStatus.ready:
-            final summary = state.summary;
-            if (summary == null) {
-              return const Center(child: Text('No data yet. Add your first expense!'));
-            }
+          switch (state.status) {
+            case DashboardStatus.idle:
+            case DashboardStatus.loading:
+              return const Center(child: CircularProgressIndicator());
+            case DashboardStatus.error:
+              return Center(child: Text(state.errorMessage ?? 'Something went wrong'));
+            case DashboardStatus.ready:
+              final summary = state.summary;
+              if (summary == null) {
+                return const Center(child: Text('No data yet. Add your first expense!'));
+              }
 
-            final quickActions = [
-              _QuickAction(
-                icon: Icons.receipt_long_rounded,
-                label: 'Add expense',
-                color: Theme.of(context).colorScheme.primary,
-                onTap: () => _showComingSoon(context, 'Expense flow opens here'),
-              ),
-              _QuickAction(
-                icon: Icons.groups_3_outlined,
-                label: 'Create group',
-                color: Theme.of(context).colorScheme.tertiary,
-                onTap: () => _showComingSoon(context, 'Use Groups tab to invite friends'),
-              ),
-              _QuickAction(
-                icon: Icons.currency_rupee,
-                label: 'Settle up',
-                color: Theme.of(context).colorScheme.secondary,
-                onTap: () => _showComingSoon(context, 'Settlement sheet launches from a group'),
-              ),
-              _QuickAction(
-                icon: Icons.workspace_premium_outlined,
-                label: 'Buy plan',
-                color: Theme.of(context).colorScheme.primary,
-                onTap: () => _showPlans(context),
-              ),
-            ];
+              final theme = Theme.of(context);
+              final groupCubit = context.watch<GroupCubit>();
+              final groupState = groupCubit.state;
+              final currentUserId = groupCubit.currentUserId;
+              final friendBalances = _buildFriendBalances(
+                groups: groupState.groups,
+                currentUserId: currentUserId,
+                directory: groupState.directory,
+              );
 
-            return RefreshIndicator(
-              onRefresh: context.read<DashboardCubit>().load,
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                    sliver: SliverToBoxAdapter(
-                      child: _DashboardHeader(summary: summary),
+              return RefreshIndicator(
+                onRefresh: () async {
+                  await context.read<DashboardCubit>().load();
+                  await context.read<GroupCubit>().load();
+                  await context.read<ContactsCubit>().load();
+                },
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                      sliver: SliverToBoxAdapter(child: _DiscountBanner(onTap: () => _openPlans(context))),
                     ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    sliver: SliverToBoxAdapter(
-                      child: _QuickActionGrid(actions: quickActions),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      sliver: SliverToBoxAdapter(
+                        child: _OverallSummaryCard(summary: summary),
+                      ),
                     ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-                    sliver: SliverToBoxAdapter(
-                      child: _GroupSection(),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                      sliver: SliverToBoxAdapter(
+                        child: _SuggestionCard(onTap: () => _navigateToGroups(context)),
+                      ),
                     ),
-                  ),
-                  const SliverPadding(
-                    padding: EdgeInsets.fromLTRB(24, 16, 24, 8),
-                    sliver: SliverToBoxAdapter(
-                      child: _ContactsInviteSection(),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+                      sliver: SliverToBoxAdapter(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _tab == _DashboardListTab.groups ? 'Groups' : 'Friends',
+                              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            SegmentedButton<_DashboardListTab>(
+                              style: SegmentedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                                selectedBackgroundColor: theme.colorScheme.primaryContainer,
+                                selectedForegroundColor: theme.colorScheme.onPrimaryContainer,
+                              ),
+                              segments: const [
+                                ButtonSegment(
+                                  value: _DashboardListTab.groups,
+                                  label: Text('Groups'),
+                                  icon: Icon(Icons.groups_rounded),
+                                ),
+                                ButtonSegment(
+                                  value: _DashboardListTab.friends,
+                                  label: Text('Friends'),
+                                  icon: Icon(Icons.person_rounded),
+                                ),
+                              ],
+                              selected: <_DashboardListTab>{_tab},
+                              onSelectionChanged: (selection) {
+                                setState(() => _tab = selection.first);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-                    sliver: SliverToBoxAdapter(
-                      child: _ActivityTimeline(activity: state.activity),
+                    switch (_tab) {
+                      _DashboardListTab.groups => SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          sliver: SliverToBoxAdapter(
+                            child: _GroupListSection(
+                              state: groupState,
+                              currentUserId: currentUserId,
+                              currency: summary.currency,
+                            ),
+                          ),
+                        ),
+                      _DashboardListTab.friends => SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          sliver: SliverToBoxAdapter(
+                            child: _FriendListSection(
+                              balances: friendBalances,
+                              currency: summary.currency,
+                            ),
+                          ),
+                        ),
+                    },
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+                      sliver: SliverToBoxAdapter(
+                        child: Text(
+                          'Recent activity',
+                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
                     ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-                    sliver: SliverToBoxAdapter(
-                      child: _BuyPlanShowcase(onTap: () => _showPlans(context)),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      sliver: SliverToBoxAdapter(
+                        child: _ActivitySection(activity: state.activity),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-        }
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+                      sliver: SliverToBoxAdapter(
+                        child: _PlanTeaserCard(onTap: () => _openPlans(context)),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+                      sliver: SliverToBoxAdapter(
+                        child: FilledButton.icon(
+                          onPressed: () => _showComingSoon(context, 'Expense flow opens here'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(56),
+                            backgroundColor: theme.colorScheme.primary,
+                          ),
+                          icon: const Icon(Icons.add_circle_outline_rounded),
+                          label: const Text('Add expense'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+          }
         },
       ),
     );
@@ -126,7 +194,7 @@ class DashboardView extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _showPlans(BuildContext context) {
+  void _openPlans(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -134,130 +202,94 @@ class DashboardView extends StatelessWidget {
     );
     context.read<BuyPlanCubit>().load();
   }
+
+  void _navigateToGroups(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Use the Groups tab to create a new group.')),
+    );
+  }
 }
 
-class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader({required this.summary});
+class _DiscountBanner extends StatelessWidget {
+  const _DiscountBanner({required this.onTap});
 
-  final DashboardSummary summary;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final cards = [
-      (
-        title: 'You owe',
-        amount: summary.youOwe,
-        icon: Icons.arrow_outward_rounded,
-        color: colorScheme.errorContainer,
-        textColor: colorScheme.onErrorContainer,
-      ),
-      (
-        title: 'You are owed',
-        amount: summary.youAreOwed,
-        icon: Icons.arrow_downward_rounded,
-        color: colorScheme.primaryContainer,
-        textColor: colorScheme.onPrimaryContainer,
-      ),
-      (
-        title: 'Net balance',
-        amount: summary.net,
-        icon: Icons.stacked_bar_chart_rounded,
-        color: colorScheme.secondaryContainer,
-        textColor: colorScheme.onSecondaryContainer,
-      ),
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF3AAB81), Color(0xFF6AD0A3)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF7F5BFF), Color(0xFFA684FF)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
         ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 16,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Welcome back',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(color: Colors.white.withOpacity(0.9)),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Your shared expenses at a glance',
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              for (final card in cards)
-                _SummaryPill(
-                  title: card.title,
-                  amount: card.amount,
-                  currency: summary.currency,
-                  color: card.color.withOpacity(0.85),
-                  textColor: card.textColor,
-                  icon: card.icon,
-                ),
-            ],
-          ),
-        ],
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.percent_rounded, color: Colors.white),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '50% off for your first month of SplitTrust Pro',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Unlock smart settlements, OCR receipts, and more premium tools.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.white.withOpacity(0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SummaryPill extends StatelessWidget {
-  const _SummaryPill({
-    required this.title,
-    required this.amount,
-    required this.currency,
-    required this.color,
-    required this.textColor,
-    required this.icon,
-  });
+class _OverallSummaryCard extends StatelessWidget {
+  const _OverallSummaryCard({required this.summary});
 
-  final String title;
-  final double amount;
-  final String currency;
-  final Color color;
-  final Color textColor;
-  final IconData icon;
+  final DashboardSummary summary;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final netPositive = summary.net >= 0;
+    final headline = netPositive ? 'you are owed' : 'you owe';
+    final amount = summary.net.abs();
+    final primaryColor = netPositive ? const Color(0xFF0B8A6F) : const Color(0xFFDA4949);
+
     return Container(
-      width: 180,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: color,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,22 +298,39 @@ class _SummaryPill extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                title,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(color: textColor.withOpacity(0.9), fontWeight: FontWeight.w600),
+                'Overall, $headline',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
-              Icon(icon, color: textColor.withOpacity(0.9)),
+              Icon(Icons.pie_chart_rounded, color: theme.colorScheme.primary),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            '$currency ${amount.toStringAsFixed(2)}',
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(color: textColor, fontWeight: FontWeight.bold),
+            '${summary.currency} ${amount.toStringAsFixed(2)}',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: primaryColor,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _BalancePill(
+                label: 'You owe',
+                amount: summary.youOwe,
+                currency: summary.currency,
+                color: const Color(0xFFDA4949).withOpacity(0.15),
+                textColor: const Color(0xFFDA4949),
+              ),
+              const SizedBox(width: 12),
+              _BalancePill(
+                label: 'You\'re owed',
+                amount: summary.youAreOwed,
+                currency: summary.currency,
+                color: const Color(0xFF0B8A6F).withOpacity(0.15),
+                textColor: const Color(0xFF0B8A6F),
+              ),
+            ],
           ),
         ],
       ),
@@ -289,144 +338,486 @@ class _SummaryPill extends StatelessWidget {
   }
 }
 
-class _QuickActionGrid extends StatelessWidget {
-  const _QuickActionGrid({required this.actions});
+class _BalancePill extends StatelessWidget {
+  const _BalancePill({
+    required this.label,
+    required this.amount,
+    required this.currency,
+    required this.color,
+    required this.textColor,
+  });
 
-  final List<_QuickAction> actions;
+  final String label;
+  final double amount;
+  final String currency;
+  final Color color;
+  final Color textColor;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Quick actions', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: actions
-              .map(
-                (action) => _QuickActionChip(action: action),
-              )
-              .toList(),
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
         ),
-      ],
-    );
-  }
-}
-
-class _QuickActionChip extends StatelessWidget {
-  const _QuickActionChip({required this.action});
-
-  final _QuickAction action;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: action.color.withOpacity(0.12),
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: action.onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(action.icon, color: action.color),
-              const SizedBox(width: 12),
-              Text(
-                action.label,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(color: action.color, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: textColor)),
+            const SizedBox(height: 4),
+            Text(
+              '${currency} ${amount.toStringAsFixed(2)}',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _GroupSection extends StatelessWidget {
-  const _GroupSection();
+class _SuggestionCard extends StatelessWidget {
+  const _SuggestionCard({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<GroupCubit, GroupState>(
-      builder: (context, state) {
-        if (state.status == GroupStatus.loading && state.groups.isEmpty) {
-          return Container(
-            height: 160,
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: const Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        if (state.errorMessage != null && state.groups.isEmpty) {
-          return Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.3)),
-            ),
-            child: Row(
+            child: Icon(Icons.home_work_rounded, color: theme.colorScheme.onPrimaryContainer),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'We couldn\'t load your groups. Pull to refresh to try again.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                Text(
+                  'Try using SplitTrust with your household',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Share rent, groceries, and utilities effortlessly.',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
+          ),
+          TextButton(
+            onPressed: onTap,
+            child: const Text('Add group'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupListSection extends StatelessWidget {
+  const _GroupListSection({
+    required this.state,
+    required this.currentUserId,
+    required this.currency,
+  });
+
+  final GroupState state;
+  final String currentUserId;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    switch (state.status) {
+      case GroupStatus.loading:
+      case GroupStatus.mutating:
+        return const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()));
+      case GroupStatus.error:
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(state.errorMessage ?? 'Unable to load groups right now'),
+        );
+      case GroupStatus.ready:
+      case GroupStatus.idle:
+        if (state.groups.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'No groups yet. Start one to keep track of shared expenses.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           );
         }
+        final items = state.groups
+            .map((group) => _GroupListItemData.fromGroup(group, currentUserId: currentUserId))
+            .toList()
+          ..sort((a, b) => b.absNet.compareTo(a.absNet));
 
-        final groups = state.groups;
-        final currentUserId = context.read<GroupCubit>().currentUserId;
-        return _GroupCarousel(groups: groups, currentUserId: currentUserId);
+        return Column(
+          children: [
+            for (final item in items)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _GroupTile(item: item, currency: currency),
+              ),
+            TextButton(
+              onPressed: () => _DashboardViewState._showComingSoon(
+                context,
+                'Show settled groups will be available soon.',
+              ),
+              child: const Text('Show settled-up groups'),
+            ),
+          ],
+        );
+    }
+  }
+}
+
+class _GroupListItemData {
+  _GroupListItemData({
+    required this.group,
+    required this.primaryMember,
+    required this.statusLine,
+    required this.net,
+  });
+
+  factory _GroupListItemData.fromGroup(GroupDetail group, {required String currentUserId}) {
+    final balances = group.balances;
+    final you = balances[currentUserId];
+    double net = 0;
+    String statusLine = 'All settled here';
+    GroupMember? primaryMember;
+
+    if (you != null) {
+      net = you.net;
+      if (net > 0) {
+        final debtors = balances.entries
+            .where((entry) => entry.key != currentUserId && entry.value.net < -0.009)
+            .toList()
+          ..sort((a, b) => a.value.net.compareTo(b.value.net));
+        if (debtors.isNotEmpty) {
+          final top = debtors.first;
+          primaryMember = group.memberById(top.key);
+          final amount = top.value.net.abs();
+          statusLine = '${primaryMember?.displayName ?? 'Someone'} owes you ${group.baseCurrency} ${amount.toStringAsFixed(2)}';
+        } else {
+          statusLine = 'Others owe you ${group.baseCurrency} ${net.toStringAsFixed(2)}';
+        }
+      } else if (net < 0) {
+        final creditors = balances.entries
+            .where((entry) => entry.key != currentUserId && entry.value.net > 0.009)
+            .toList()
+          ..sort((a, b) => b.value.net.compareTo(a.value.net));
+        if (creditors.isNotEmpty) {
+          final top = creditors.first;
+          primaryMember = group.memberById(top.key);
+          final amount = top.value.net.abs();
+          statusLine = 'You owe ${primaryMember?.displayName ?? 'someone'} ${group.baseCurrency} ${amount.toStringAsFixed(2)}';
+        } else {
+          statusLine = 'You owe others ${group.baseCurrency} ${net.abs().toStringAsFixed(2)}';
+        }
+      }
+    }
+
+    return _GroupListItemData(
+      group: group,
+      primaryMember: primaryMember,
+      statusLine: statusLine,
+      net: net,
+    );
+  }
+
+  final GroupDetail group;
+  final GroupMember? primaryMember;
+  final String statusLine;
+  final double net;
+
+  double get absNet => net.abs();
+}
+
+class _GroupTile extends StatelessWidget {
+  const _GroupTile({required this.item, required this.currency});
+
+  final _GroupListItemData item;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final netPositive = item.net >= 0;
+    final amountColor = netPositive ? const Color(0xFF0B8A6F) : const Color(0xFFDA4949);
+    final initials = item.group.name.characters.first.toUpperCase();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+            child: Text(
+              initials,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.group.name,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.statusLine,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                netPositive ? 'You\'re owed' : 'You owe',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$currency ${item.net.abs().toStringAsFixed(2)}',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: amountColor,
+                    ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FriendListSection extends StatelessWidget {
+  const _FriendListSection({required this.balances, required this.currency});
+
+  final List<_FriendBalanceData> balances;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    if (balances.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          'Invite friends to SplitTrust to keep things even.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final entry in balances)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _FriendTile(entry: entry, currency: currency),
+          ),
+        BlocBuilder<ContactsCubit, ContactsState>(
+          builder: (context, state) {
+            if (state.status != ContactsStatus.ready) {
+              return const SizedBox.shrink();
+            }
+            final needsInvite = state.contacts.where((c) => !c.isUser).toList();
+            if (needsInvite.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _showInviteSheet(context, needsInvite),
+                icon: const Icon(Icons.person_add_alt_1_rounded),
+                label: const Text('Invite friends to SplitTrust'),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _showInviteSheet(BuildContext context, List<Contact> contacts) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(24),
+            itemBuilder: (context, index) {
+              final contact = contacts[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  child: Text(contact.name.characters.first.toUpperCase()),
+                ),
+                title: Text(contact.name),
+                subtitle: Text(contact.phone ?? contact.email ?? 'No contact info'),
+                trailing: TextButton(
+                  onPressed: () => context.read<ContactsCubit>().invite(contact),
+                  child: const Text('Send link'),
+                ),
+              );
+            },
+            separatorBuilder: (_, __) => const Divider(),
+            itemCount: contacts.length,
+          ),
+        );
       },
     );
   }
 }
 
-class _GroupCarousel extends StatelessWidget {
-  const _GroupCarousel({required this.groups, required this.currentUserId});
+class _FriendBalanceData {
+  _FriendBalanceData({
+    required this.id,
+    required this.displayName,
+    required this.net,
+    required Set<String> groups,
+  }) : groups = List.unmodifiable((groups.toList()..sort()));
 
-  final List<GroupDetail> groups;
-  final String currentUserId;
+  final String id;
+  final String displayName;
+  final double net;
+  final List<String> groups;
+}
+
+class _FriendTile extends StatelessWidget {
+  const _FriendTile({required this.entry, required this.currency});
+
+  final _FriendBalanceData entry;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
-    if (groups.isEmpty) {
+    final owesYou = entry.net < 0;
+    final amount = entry.net.abs();
+    final status = owesYou ? 'owes you' : 'you owe';
+    final color = owesYou ? const Color(0xFF0B8A6F) : const Color(0xFFDA4949);
+    final initials = entry.displayName.characters.take(2).toString().toUpperCase();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: Theme.of(context).colorScheme.secondary.withOpacity(0.12),
+            child: Text(initials, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.displayName,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${status.capitalizeFirst()} ${currency} ${amount.toStringAsFixed(2)}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color),
+                ),
+                if (entry.groups.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    entry.groups.join(', '),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                owesYou ? 'You are owed' : 'You owe',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$currency ${amount.toStringAsFixed(2)}',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActivitySection extends StatelessWidget {
+  const _ActivitySection({required this.activity});
+
+  final List<ActivityItem> activity;
+
+  @override
+  Widget build(BuildContext context) {
+    if (activity.isEmpty) {
       return Container(
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
-        padding: const EdgeInsets.all(24),
         child: Row(
           children: [
-            CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: Icon(Icons.group_add, color: Theme.of(context).colorScheme.onPrimaryContainer),
-            ),
+            Icon(Icons.celebration_rounded, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
-                'Create your first group to start splitting expenses with friends.',
-                style: Theme.of(context).textTheme.bodyLarge,
+                'All settled! Add a new expense to keep things moving.',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
           ],
@@ -435,193 +826,51 @@ class _GroupCarousel extends StatelessWidget {
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Your groups',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            Text('${groups.length} total', style: Theme.of(context).textTheme.labelLarge),
-          ],
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 160,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: groups.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
-            itemBuilder: (context, index) {
-              final group = groups[index];
-              final balances = group.balances;
-              final net = balances[currentUserId]?.net ?? 0;
-              final positive = net >= 0;
-              final balanceColor = positive ? Colors.green.shade600 : Colors.red.shade600;
-              return Container(
-                width: 220,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 12,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.15),
-                          foregroundColor: Theme.of(context).colorScheme.primary,
-                          child: Text(group.name.characters.first.toUpperCase()),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            group.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Row(
-                      children: [
-                        Chip(
-                          label: Text(group.baseCurrency),
-                          avatar: const Icon(Icons.currency_exchange, size: 18),
-                        ),
-                        const Spacer(),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text('Balance', style: Theme.of(context).textTheme.labelLarge),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${group.baseCurrency} ${net.toStringAsFixed(2)}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(color: balanceColor, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActivityTimeline extends StatelessWidget {
-  const _ActivityTimeline({required this.activity});
-
-  final List<ActivityItem> activity;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Recent activity', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 16),
-        if (activity.isEmpty)
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-            ),
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              children: [
-                Icon(Icons.celebration_outlined, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text('All settled! Add a new expense to keep things moving.',
-                      style: Theme.of(context).textTheme.bodyLarge),
-                ),
-              ],
-            ),
-          )
-        else
-          ...activity.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+        for (final item in activity)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    children: [
-                      Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      if (item != activity.last)
-                        Container(
-                          width: 2,
-                          height: 36,
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                        ),
-                    ],
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.receipt_long_rounded),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  item.title,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleSmall
-                                      ?.copyWith(fontWeight: FontWeight.w700),
-                                ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.subtitle,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
-                              Text(timeAgo(item.timestamp), style: Theme.of(context).textTheme.labelMedium),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(item.subtitle, style: Theme.of(context).textTheme.bodyMedium),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _timeAgo(item.timestamp),
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -633,347 +882,44 @@ class _ActivityTimeline extends StatelessWidget {
   }
 }
 
-class _ContactsInviteSection extends StatelessWidget {
-  const _ContactsInviteSection();
+class _PlanTeaserCard extends StatelessWidget {
+  const _PlanTeaserCard({required this.onTap});
 
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<ContactsCubit, ContactsState>(
-      builder: (context, state) {
-        switch (state.status) {
-          case ContactsStatus.idle:
-            return const SizedBox.shrink();
-          case ContactsStatus.loading:
-            return Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: const Center(child: CircularProgressIndicator()),
-            );
-          case ContactsStatus.failure:
-            return Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Text(
-                state.errorMessage ?? 'Unable to load contacts right now',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Theme.of(context).colorScheme.onErrorContainer),
-              ),
-            );
-          case ContactsStatus.ready:
-            final onApp = state.contacts.where((c) => c.isUser).toList();
-            final needsInvite = state.contacts.where((c) => !c.isUser).toList();
-            if (onApp.isEmpty && needsInvite.isEmpty) {
-              return const SizedBox.shrink();
-            }
-
-            return Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Bring your friends',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Sync existing groups instantly or invite friends who have not joined SplitTrust yet.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                  ),
-                  if (onApp.isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    Text(
-                      'Already on SplitTrust',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        for (final contact in onApp)
-                          _FriendChip(contact: contact),
-                      ],
-                    ),
-                  ],
-                  if (needsInvite.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    Text(
-                      'Invite from your contacts',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 150,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemBuilder: (context, index) {
-                          final contact = needsInvite[index];
-                          return _InviteCard(contact: contact);
-                        },
-                        separatorBuilder: (_, __) => const SizedBox(width: 16),
-                        itemCount: needsInvite.length,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-        }
-      },
-    );
-  }
-}
-
-class _FriendChip extends StatelessWidget {
-  const _FriendChip({required this.contact});
-
-  final Contact contact;
-
-  @override
-  Widget build(BuildContext context) {
-    final initials = contact.name.characters.take(2).toString().toUpperCase();
-    final colorScheme = Theme.of(context).colorScheme;
-    final planLabel = contact.plan.isEmpty ? 'SplitTrust friend' : '${contact.plan} plan';
-    return Chip(
-      avatar: CircleAvatar(
-        backgroundColor: colorScheme.primary,
-        child: Text(
-          initials,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
-      label: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(contact.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-          Text(planLabel, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12)),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      backgroundColor: colorScheme.surface,
-    );
-  }
-}
-
-class _InviteCard extends StatelessWidget {
-  const _InviteCard({required this.contact});
-
-  final Contact contact;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      width: 220,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            backgroundColor: theme.colorScheme.primaryContainer,
-            child: Text(
-              contact.name.characters.first.toUpperCase(),
-              style: TextStyle(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(contact.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text(contact.phone, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          const Spacer(),
-          FilledButton.icon(
-            onPressed: contact.invited
-                ? null
-                : () => context.read<ContactsCubit>().invite(contact),
-            icon: Icon(contact.invited ? Icons.check_rounded : Icons.sms_rounded),
-            label: Text(contact.invited ? 'Invited' : 'Invite'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BuyPlanShowcase extends StatelessWidget {
-  const _BuyPlanShowcase({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Upgrade to unlock more',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 12),
-        BlocBuilder<BuyPlanCubit, BuyPlanState>(
-          builder: (context, state) {
-            final plans = state.plans;
-            if (state.status == BuyPlanStatus.loading && plans.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (plans.isEmpty) {
-              return _BuyPlanHero(
-                title: 'Explore SplitTrust plans',
-                subtitle: 'See how Gold and Diamond add OCR, exports, and smart settlements.',
-                onTap: onTap,
-              );
-            }
-            return Column(
-              children: plans
-                  .map(
-                    (plan) => Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _BuyPlanHero(
-                        title: plan.tier.displayName,
-                        subtitle: plan.description,
-                        price: plan.priceLabel,
-                        highlight: plan.highlight,
-                        onTap: onTap,
-                      ),
-                    ),
-                  )
-                  .toList(),
-            );
-          },
+        gradient: const LinearGradient(
+          colors: [Color(0xFF39AF78), Color(0xFF79D4A5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-      ],
-    );
-  }
-}
-
-class _BuyPlanHero extends StatelessWidget {
-  const _BuyPlanHero({
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.price,
-    this.highlight = false,
-  });
-
-  final String title;
-  final String subtitle;
-  final String? price;
-  final bool highlight;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final gradientColors = highlight
-        ? const [Color(0xFF46C295), Color(0xFF2DA683)]
-        : const [Color(0xFFE9F6F0), Color(0xFFD7EEE4)];
-    final textColor = highlight ? Colors.white : Colors.black87;
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradientColors, begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          if (highlight)
-            BoxShadow(
-              color: gradientColors.last.withOpacity(0.35),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
-            ),
-        ],
       ),
-      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(color: textColor, fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: textColor.withOpacity(0.9)),
-                    ),
-                  ],
-                ),
-              ),
-              if (price != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: highlight ? Colors.white.withOpacity(0.2) : Colors.white,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    price!,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelLarge
-                        ?.copyWith(color: textColor, fontWeight: FontWeight.w700),
-                  ),
-                ),
-            ],
+          Text(
+            'Do more with SplitTrust Pro',
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Unlock smart settlements, OCR, exports, and premium themes for your groups.',
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white.withOpacity(0.9)),
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
+          FilledButton(
             onPressed: onTap,
-            style: FilledButton.styleFrom(
-              backgroundColor: highlight ? Colors.white : Theme.of(context).colorScheme.primary,
-              foregroundColor: highlight
-                  ? gradientColors.last
-                  : Theme.of(context).colorScheme.onPrimary,
-            ),
-            icon: const Icon(Icons.chevron_right_rounded),
-            label: Text(highlight ? 'Buy now' : 'See details'),
+            style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF1D7A56)),
+            child: const Text('Get SplitTrust Pro'),
           ),
         ],
       ),
@@ -981,27 +927,69 @@ class _BuyPlanHero extends StatelessWidget {
   }
 }
 
-class _QuickAction {
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
+List<_FriendBalanceData> _buildFriendBalances({
+  required List<GroupDetail> groups,
+  required String currentUserId,
+  required List<MemberProfile> directory,
+}) {
+  final entries = <String, _FriendBalanceData>{};
+  final displayNames = {
+    for (final member in directory) member.id: member.displayName,
+  };
 
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
+  for (final group in groups) {
+    final balances = group.balances;
+    if (!balances.containsKey(currentUserId)) {
+      continue;
+    }
+    for (final member in group.members) {
+      if (member.id == currentUserId) continue;
+      final balance = balances[member.id];
+      if (balance == null) continue;
+      final existing = entries[member.id];
+      final updatedNet = (existing?.net ?? 0) + balance.net;
+      final updatedGroups = <String>{};
+      if (existing != null) {
+        updatedGroups.addAll(existing.groups);
+      }
+      updatedGroups.add(group.name);
+      entries[member.id] = _FriendBalanceData(
+        id: member.id,
+        displayName: displayNames[member.id] ?? member.displayName,
+        net: updatedNet,
+        groups: updatedGroups,
+      );
+    }
+  }
+
+  final list = entries.values.toList()
+    ..sort((a, b) {
+      final diff = a.net.compareTo(b.net);
+      if (diff != 0) return diff;
+      return a.displayName.compareTo(b.displayName);
+    });
+  return list;
 }
 
-String timeAgo(DateTime timestamp) {
-  final difference = DateTime.now().difference(timestamp);
-  if (difference.inMinutes < 60) {
-    return '${difference.inMinutes}m ago';
+String _timeAgo(DateTime dateTime) {
+  final duration = DateTime.now().difference(dateTime);
+  if (duration.inDays >= 1) {
+    return '${duration.inDays} day${duration.inDays == 1 ? '' : 's'} ago';
   }
-  if (difference.inHours < 24) {
-    return '${difference.inHours}h ago';
+  if (duration.inHours >= 1) {
+    return '${duration.inHours} hour${duration.inHours == 1 ? '' : 's'} ago';
   }
-  return '${difference.inDays}d ago';
+  if (duration.inMinutes >= 1) {
+    return '${duration.inMinutes} minute${duration.inMinutes == 1 ? '' : 's'} ago';
+  }
+  return 'Just now';
 }
+
+extension on String {
+  String capitalizeFirst() {
+    if (isEmpty) return this;
+    final first = this[0].toUpperCase();
+    return first + substring(1);
+  }
+}
+
