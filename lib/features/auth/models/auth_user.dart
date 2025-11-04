@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthUser extends Equatable {
   const AuthUser({
@@ -16,6 +17,20 @@ class AuthUser extends Equatable {
   final String phone;
   final String plan;
   final bool isInvitable;
+
+  factory AuthUser.fromFirebaseUser(User user) {
+    final displayName = user.displayName ?? '';
+    final email = user.email ?? '';
+    final phone = user.phoneNumber ?? '';
+    return AuthUser(
+      id: user.uid,
+      displayName: displayName.isEmpty ? (email.isNotEmpty ? email.split('@').first : 'SplitTrust user') : displayName,
+      email: email,
+      phone: phone,
+      plan: 'silver',
+      isInvitable: false,
+    );
+  }
 
   AuthUser copyWith({
     String? displayName,

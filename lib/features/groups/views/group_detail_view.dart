@@ -634,7 +634,7 @@ class _MemberBalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final net = balance?.net ?? 0;
     final positive = net >= 0;
-    double progress = (net.abs() / maxNet).clamp(0, 1);
+    final progress = (net.abs() / maxNet).clamp(0, 1);
     final accent = positive ? Colors.green.shade600 : Colors.red.shade600;
 
     return Container(

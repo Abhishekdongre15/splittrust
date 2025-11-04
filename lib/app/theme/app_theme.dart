@@ -57,7 +57,7 @@ class SplitTrustTheme {
             OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: scheme.primary, width: 1.6)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         color: Colors.white,
         elevation: 3,
         shadowColor: Colors.black.withOpacity(0.08),

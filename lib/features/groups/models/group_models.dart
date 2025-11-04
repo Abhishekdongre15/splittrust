@@ -241,7 +241,7 @@ double roundBankers(double value, [int fractionDigits = 2]) {
 }
 
 class GroupDetail extends Equatable {
-   GroupDetail({
+  const GroupDetail({
     required this.id,
     required this.name,
     required this.baseCurrency,
