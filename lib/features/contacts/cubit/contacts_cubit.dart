@@ -12,7 +12,7 @@ class ContactsCubit extends Cubit<ContactsState> {
 
   final ContactRepository _repository;
 
-  void load() {
+  Future<void> load() async {
     emit(state.copyWith(status: ContactsStatus.loading));
     try {
       final contacts = _repository.fetchContacts();

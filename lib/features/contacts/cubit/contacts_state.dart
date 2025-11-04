@@ -1,12 +1,11 @@
 import 'package:equatable/equatable.dart';
-
 import '../models/contact.dart';
 
-enum ContactsStatus { idle, loading, ready, failure }
+enum ContactsStatus { initial, loading, ready, failure }
 
 class ContactsState extends Equatable {
   const ContactsState({
-    this.status = ContactsStatus.idle,
+    this.status = ContactsStatus.initial,
     this.contacts = const [],
     this.errorMessage,
     this.lastInvited,
@@ -22,12 +21,13 @@ class ContactsState extends Equatable {
     List<Contact>? contacts,
     String? errorMessage,
     Contact? lastInvited,
+    bool clearError = false,
   }) {
     return ContactsState(
       status: status ?? this.status,
       contacts: contacts ?? this.contacts,
-      errorMessage: errorMessage,
-      lastInvited: lastInvited,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      lastInvited: lastInvited ?? this.lastInvited,
     );
   }
 

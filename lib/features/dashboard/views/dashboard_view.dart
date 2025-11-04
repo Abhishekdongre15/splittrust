@@ -30,7 +30,7 @@ class _DashboardViewState extends State<DashboardView> {
   Widget build(BuildContext context) {
     return BlocListener<ContactsCubit, ContactsState>(
       listenWhen: (previous, current) =>
-          previous.lastInvited != current.lastInvited && current.lastInvited != null,
+      previous.lastInvited != current.lastInvited && current.lastInvited != null,
       listener: (context, state) {
         final invited = state.lastInvited;
         if (invited != null) {
@@ -74,7 +74,9 @@ class _DashboardViewState extends State<DashboardView> {
                   slivers: [
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                      sliver: SliverToBoxAdapter(child: _DiscountBanner(onTap: () => _openPlans(context))),
+                      sliver: SliverToBoxAdapter(
+                        child: _DiscountBanner(onTap: () => _openPlans(context)),
+                      ),
                     ),
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -118,7 +120,9 @@ class _DashboardViewState extends State<DashboardView> {
                               ],
                               selected: <_DashboardListTab>{_tab},
                               onSelectionChanged: (selection) {
-                                setState(() => _tab = selection.first);
+                                setState(() {
+                                  _tab = selection.first;
+                                });
                               },
                             ),
                           ],
@@ -127,24 +131,24 @@ class _DashboardViewState extends State<DashboardView> {
                     ),
                     switch (_tab) {
                       _DashboardListTab.groups => SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          sliver: SliverToBoxAdapter(
-                            child: _GroupListSection(
-                              state: groupState,
-                              currentUserId: currentUserId,
-                              currency: summary.currency,
-                            ),
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        sliver: SliverToBoxAdapter(
+                          child: _GroupListSection(
+                            state: groupState,
+                            currentUserId: currentUserId,
+                            currency: summary.currency,
                           ),
                         ),
+                      ),
                       _DashboardListTab.friends => SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          sliver: SliverToBoxAdapter(
-                            child: _FriendListSection(
-                              balances: friendBalances,
-                              currency: summary.currency,
-                            ),
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        sliver: SliverToBoxAdapter(
+                          child: _FriendListSection(
+                            balances: friendBalances,
+                            currency: summary.currency,
                           ),
                         ),
+                      ),
                     },
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
@@ -212,7 +216,6 @@ class _DashboardViewState extends State<DashboardView> {
 
 class _DiscountBanner extends StatelessWidget {
   const _DiscountBanner({required this.onTap});
-
   final VoidCallback onTap;
 
   @override
@@ -273,7 +276,6 @@ class _DiscountBanner extends StatelessWidget {
 
 class _OverallSummaryCard extends StatelessWidget {
   const _OverallSummaryCard({required this.summary});
-
   final DashboardSummary summary;
 
   @override
@@ -368,11 +370,11 @@ class _BalancePill extends StatelessWidget {
             Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: textColor)),
             const SizedBox(height: 4),
             Text(
-              '${currency} ${amount.toStringAsFixed(2)}',
+              '$currency ${amount.toStringAsFixed(2)}',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: textColor,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: textColor,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
@@ -383,7 +385,6 @@ class _BalancePill extends StatelessWidget {
 
 class _SuggestionCard extends StatelessWidget {
   const _SuggestionCard({required this.onTap});
-
   final VoidCallback onTap;
 
   @override
@@ -419,7 +420,9 @@ class _SuggestionCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Share rent, groceries, and utilities effortlessly.',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -450,14 +453,19 @@ class _GroupListSection extends StatelessWidget {
     switch (state.status) {
       case GroupStatus.loading:
       case GroupStatus.mutating:
-        return const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()));
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: CircularProgressIndicator(),
+          ),
+        );
       case GroupStatus.error:
         return Padding(
           padding: const EdgeInsets.all(16),
           child: Text(state.errorMessage ?? 'Unable to load groups right now'),
         );
       case GroupStatus.ready:
-      case GroupStatus.idle:
+      case GroupStatus.initial: // fixed (was .idle)
         if (state.groups.isEmpty) {
           return Padding(
             padding: const EdgeInsets.all(16),
@@ -468,7 +476,10 @@ class _GroupListSection extends StatelessWidget {
           );
         }
         final items = state.groups
-            .map((group) => _GroupListItemData.fromGroup(group, currentUserId: currentUserId))
+            .map((group) => _GroupListItemData.fromGroup(
+          group,
+          currentUserId: currentUserId,
+        ))
             .toList()
           ..sort((a, b) => b.absNet.compareTo(a.absNet));
 
@@ -500,7 +511,10 @@ class _GroupListItemData {
     required this.net,
   });
 
-  factory _GroupListItemData.fromGroup(GroupDetail group, {required String currentUserId}) {
+  factory _GroupListItemData.fromGroup(
+      GroupDetail group, {
+        required String currentUserId,
+      }) {
     final balances = group.balances;
     final you = balances[currentUserId];
     double net = 0;
@@ -511,29 +525,33 @@ class _GroupListItemData {
       net = you.net;
       if (net > 0) {
         final debtors = balances.entries
-            .where((entry) => entry.key != currentUserId && entry.value.net < -0.009)
+            .where((e) => e.key != currentUserId && e.value.net < -0.009)
             .toList()
           ..sort((a, b) => a.value.net.compareTo(b.value.net));
         if (debtors.isNotEmpty) {
           final top = debtors.first;
           primaryMember = group.memberById(top.key);
           final amount = top.value.net.abs();
-          statusLine = '${primaryMember?.displayName ?? 'Someone'} owes you ${group.baseCurrency} ${amount.toStringAsFixed(2)}';
+          statusLine =
+          '${primaryMember?.displayName ?? 'Someone'} owes you ${group.baseCurrency} ${amount.toStringAsFixed(2)}';
         } else {
-          statusLine = 'Others owe you ${group.baseCurrency} ${net.toStringAsFixed(2)}';
+          statusLine =
+          'Others owe you ${group.baseCurrency} ${net.toStringAsFixed(2)}';
         }
       } else if (net < 0) {
         final creditors = balances.entries
-            .where((entry) => entry.key != currentUserId && entry.value.net > 0.009)
+            .where((e) => e.key != currentUserId && e.value.net > 0.009)
             .toList()
           ..sort((a, b) => b.value.net.compareTo(a.value.net));
         if (creditors.isNotEmpty) {
           final top = creditors.first;
           primaryMember = group.memberById(top.key);
           final amount = top.value.net.abs();
-          statusLine = 'You owe ${primaryMember?.displayName ?? 'someone'} ${group.baseCurrency} ${amount.toStringAsFixed(2)}';
+          statusLine =
+          'You owe ${primaryMember?.displayName ?? 'someone'} ${group.baseCurrency} ${amount.toStringAsFixed(2)}';
         } else {
-          statusLine = 'You owe others ${group.baseCurrency} ${net.abs().toStringAsFixed(2)}';
+          statusLine =
+          'You owe others ${group.baseCurrency} ${net.abs().toStringAsFixed(2)}';
         }
       }
     }
@@ -556,14 +574,14 @@ class _GroupListItemData {
 
 class _GroupTile extends StatelessWidget {
   const _GroupTile({required this.item, required this.currency});
-
   final _GroupListItemData item;
   final String currency;
 
   @override
   Widget build(BuildContext context) {
     final netPositive = item.net >= 0;
-    final amountColor = netPositive ? const Color(0xFF0B8A6F) : const Color(0xFFDA4949);
+    final amountColor =
+    netPositive ? const Color(0xFF0B8A6F) : const Color(0xFFDA4949);
     final initials = item.group.name.characters.first.toUpperCase();
 
     return Container(
@@ -577,10 +595,14 @@ class _GroupTile extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+            backgroundColor:
+            Theme.of(context).colorScheme.primary.withOpacity(0.12),
             child: Text(
               initials,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(width: 16),
@@ -590,14 +612,18 @@ class _GroupTile extends StatelessWidget {
               children: [
                 Text(
                   item.group.name,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   item.statusLine,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color:
+                    Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -613,9 +639,9 @@ class _GroupTile extends StatelessWidget {
               Text(
                 '$currency ${item.net.abs().toStringAsFixed(2)}',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: amountColor,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: amountColor,
+                ),
               ),
             ],
           ),
@@ -655,7 +681,8 @@ class _FriendListSection extends StatelessWidget {
             if (state.status != ContactsStatus.ready) {
               return const SizedBox.shrink();
             }
-            final needsInvite = state.contacts.where((c) => !c.isUser).toList();
+            final needsInvite =
+            state.contacts.where((c) => !c.isUser).toList();
             if (needsInvite.isEmpty) {
               return const SizedBox.shrink();
             }
@@ -685,12 +712,16 @@ class _FriendListSection extends StatelessWidget {
               final contact = contacts[index];
               return ListTile(
                 leading: CircleAvatar(
-                  child: Text(contact.name.characters.first.toUpperCase()),
+                  child:
+                  Text(contact.name.characters.first.toUpperCase()),
                 ),
                 title: Text(contact.name),
-                subtitle: Text(contact.phone ?? contact.email ?? 'No contact info'),
+                subtitle: Text(
+                  contact.phone ?? contact.email ?? 'No contact info',
+                ),
                 trailing: TextButton(
-                  onPressed: () => context.read<ContactsCubit>().invite(contact),
+                  onPressed: () =>
+                      context.read<ContactsCubit>().invite(contact),
                   child: const Text('Send link'),
                 ),
               );
@@ -729,8 +760,10 @@ class _FriendTile extends StatelessWidget {
     final owesYou = entry.net < 0;
     final amount = entry.net.abs();
     final status = owesYou ? 'owes you' : 'you owe';
-    final color = owesYou ? const Color(0xFF0B8A6F) : const Color(0xFFDA4949);
-    final initials = entry.displayName.characters.take(2).toString().toUpperCase();
+    final color =
+    owesYou ? const Color(0xFF0B8A6F) : const Color(0xFFDA4949);
+    final initials =
+    entry.displayName.characters.take(2).toString().toUpperCase();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -743,8 +776,15 @@ class _FriendTile extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: Theme.of(context).colorScheme.secondary.withOpacity(0.12),
-            child: Text(initials, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            backgroundColor:
+            Theme.of(context).colorScheme.secondary.withOpacity(0.12),
+            child: Text(
+              initials,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -753,20 +793,27 @@ class _FriendTile extends StatelessWidget {
               children: [
                 Text(
                   entry.displayName,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${status.capitalizeFirst()} ${currency} ${amount.toStringAsFixed(2)}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color),
+                  '${status.capitalizeFirst()} $currency ${amount.toStringAsFixed(2)}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: color,
+                  ),
                 ),
                 if (entry.groups.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     entry.groups.join(', '),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurfaceVariant,
+                    ),
                   ),
                 ],
               ],
@@ -783,9 +830,9 @@ class _FriendTile extends StatelessWidget {
               Text(
                 '$currency ${amount.toStringAsFixed(2)}',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
               ),
             ],
           ),
@@ -797,7 +844,6 @@ class _FriendTile extends StatelessWidget {
 
 class _ActivitySection extends StatelessWidget {
   const _ActivitySection({required this.activity});
-
   final List<ActivityItem> activity;
 
   @override
@@ -812,7 +858,8 @@ class _ActivitySection extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.celebration_rounded, color: Theme.of(context).colorScheme.primary),
+            Icon(Icons.celebration_rounded,
+                color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -844,7 +891,10 @@ class _ActivitySection extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.12),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Icon(Icons.receipt_long_rounded),
@@ -856,14 +906,19 @@ class _ActivitySection extends StatelessWidget {
                       children: [
                         Text(
                           item.title,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           item.subtitle,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -884,7 +939,6 @@ class _ActivitySection extends StatelessWidget {
 
 class _PlanTeaserCard extends StatelessWidget {
   const _PlanTeaserCard({required this.onTap});
-
   final VoidCallback onTap;
 
   @override
@@ -892,13 +946,13 @@ class _PlanTeaserCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
           colors: [Color(0xFF39AF78), Color(0xFF79D4A5)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.all(Radius.circular(24)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -913,12 +967,17 @@ class _PlanTeaserCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Unlock smart settlements, OCR, exports, and premium themes for your groups.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white.withOpacity(0.9)),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withOpacity(0.9),
+            ),
           ),
           const SizedBox(height: 16),
           FilledButton(
             onPressed: onTap,
-            style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF1D7A56)),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF1D7A56),
+            ),
             child: const Text('Get SplitTrust Pro'),
           ),
         ],
@@ -934,25 +993,22 @@ List<_FriendBalanceData> _buildFriendBalances({
 }) {
   final entries = <String, _FriendBalanceData>{};
   final displayNames = {
-    for (final member in directory) member.id: member.displayName,
+    for (final m in directory) m.id: m.displayName,
   };
 
   for (final group in groups) {
     final balances = group.balances;
-    if (!balances.containsKey(currentUserId)) {
-      continue;
-    }
+    if (!balances.containsKey(currentUserId)) continue;
+
     for (final member in group.members) {
       if (member.id == currentUserId) continue;
       final balance = balances[member.id];
       if (balance == null) continue;
+
       final existing = entries[member.id];
       final updatedNet = (existing?.net ?? 0) + balance.net;
-      final updatedGroups = <String>{};
-      if (existing != null) {
-        updatedGroups.addAll(existing.groups);
-      }
-      updatedGroups.add(group.name);
+      final updatedGroups = <String>{...?(existing?.groups.toSet())}..add(group.name);
+
       entries[member.id] = _FriendBalanceData(
         id: member.id,
         displayName: displayNames[member.id] ?? member.displayName,
@@ -992,4 +1048,3 @@ extension on String {
     return first + substring(1);
   }
 }
-
