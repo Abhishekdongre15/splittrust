@@ -938,25 +938,66 @@ List<_FriendBalanceData> _buildFriendBalances({
   };
 
   for (final group in groups) {
-    final balances = group.balances;
-    if (!balances.containsKey(currentUserId)) {
+    final members = {
+      for (final member in group.members) member.id: member,
+    };
+    if (!members.containsKey(currentUserId)) {
       continue;
     }
-    for (final member in group.members) {
-      if (member.id == currentUserId) continue;
-      final balance = balances[member.id];
-      if (balance == null) continue;
-      final existing = entries[member.id];
-      final updatedNet = (existing?.net ?? 0) + balance.net;
+
+    final pairwiseBalances = <String, double>{};
+
+    for (final expense in group.expenses) {
+      final payerId = expense.paidBy;
+      if (payerId == currentUserId) {
+        for (final share in expense.shares) {
+          final memberId = share.memberId;
+          if (memberId == currentUserId) continue;
+          if (!members.containsKey(memberId)) continue;
+          final updated = (pairwiseBalances[memberId] ?? 0) - share.shareAmount;
+          pairwiseBalances[memberId] = roundBankers(updated);
+        }
+      } else {
+        for (final share in expense.shares) {
+          if (share.memberId != currentUserId) continue;
+          if (!members.containsKey(payerId)) break;
+          final updated = (pairwiseBalances[payerId] ?? 0) + share.shareAmount;
+          pairwiseBalances[payerId] = roundBankers(updated);
+          break;
+        }
+      }
+    }
+
+    for (final settlement in group.settlements) {
+      if (settlement.fromMemberId == currentUserId) {
+        final toMemberId = settlement.toMemberId;
+        if (!members.containsKey(toMemberId)) continue;
+        final updated = (pairwiseBalances[toMemberId] ?? 0) - settlement.amount;
+        pairwiseBalances[toMemberId] = roundBankers(updated);
+      } else if (settlement.toMemberId == currentUserId) {
+        final fromMemberId = settlement.fromMemberId;
+        if (!members.containsKey(fromMemberId)) continue;
+        final updated = (pairwiseBalances[fromMemberId] ?? 0) + settlement.amount;
+        pairwiseBalances[fromMemberId] = roundBankers(updated);
+      }
+    }
+
+    for (final entry in pairwiseBalances.entries) {
+      final memberId = entry.key;
+      if (memberId == currentUserId) continue;
+      if (!members.containsKey(memberId)) continue;
+      if (entry.value == 0) continue;
+
+      final existing = entries[memberId];
       final updatedGroups = <String>{};
       if (existing != null) {
         updatedGroups.addAll(existing.groups);
       }
       updatedGroups.add(group.name);
-      entries[member.id] = _FriendBalanceData(
-        id: member.id,
-        displayName: displayNames[member.id] ?? member.displayName,
-        net: updatedNet,
+      entries[memberId] = _FriendBalanceData(
+        id: memberId,
+        displayName: displayNames[memberId] ?? members[memberId]!.displayName,
+        net: roundBankers((existing?.net ?? 0) + entry.value),
         groups: updatedGroups,
       );
     }
