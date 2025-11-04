@@ -167,20 +167,6 @@ class _DashboardViewState extends State<DashboardView> {
                         child: _PlanTeaserCard(onTap: () => _openPlans(context)),
                       ),
                     ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-                      sliver: SliverToBoxAdapter(
-                        child: FilledButton.icon(
-                          onPressed: () => _showComingSoon(context, 'Expense flow opens here'),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(56),
-                            backgroundColor: theme.colorScheme.primary,
-                          ),
-                          icon: const Icon(Icons.add_circle_outline_rounded),
-                          label: const Text('Add expense'),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               );
@@ -190,24 +176,24 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  static void _showComingSoon(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  void _openPlans(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => const BuyPlanSheet(),
-    );
-    context.read<BuyPlanCubit>().load();
-  }
+void _openPlans(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) => const BuyPlanSheet(),
+  );
+  context.read<BuyPlanCubit>().load();
+}
 
   void _navigateToGroups(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Use the Groups tab to create a new group.')),
     );
   }
+}
+
+void showComingSoonSnackBar(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
 class _DiscountBanner extends StatelessWidget {
@@ -480,7 +466,7 @@ class _GroupListSection extends StatelessWidget {
                 child: _GroupTile(item: item, currency: currency),
               ),
             TextButton(
-              onPressed: () => _DashboardViewState._showComingSoon(
+              onPressed: () => showComingSoonSnackBar(
                 context,
                 'Show settled groups will be available soon.',
               ),
